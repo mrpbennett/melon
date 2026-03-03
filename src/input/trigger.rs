@@ -27,6 +27,10 @@ pub enum InputAction {
     CtrlJ,
     /// Ctrl-K — move up in popup (or passthrough in passthrough mode).
     CtrlK,
+    /// Ctrl-W or Option+Backspace — kill last word.
+    KillWord,
+    /// Ctrl-U — kill entire line.
+    KillLine,
 }
 
 /// Parse raw input bytes into an InputAction.
@@ -41,10 +45,25 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
         return (InputAction::Tab, 1);
     }
 
+    // Ctrl-W — kill last word
+    if buf[0] == 0x17 {
+        return (InputAction::KillWord, 1);
+    }
+
+    // Ctrl-U — kill entire line
+    if buf[0] == 0x15 {
+        return (InputAction::KillLine, 1);
+    }
+
     // Escape sequences
     if buf[0] == 0x1b {
         if buf.len() == 1 {
             return (InputAction::Escape, 1);
+        }
+
+        // Option+Backspace (macOS): ESC + DEL — kill last word
+        if buf[1] == 0x7f {
+            return (InputAction::KillWord, 2);
         }
 
         if buf.len() >= 2 && buf[1] == b'[' {

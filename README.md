@@ -28,10 +28,21 @@ To update to the latest version, run the same command again.
 Launch melon from any terminal:
 
 ```bash
-melon
+melon --install
 ```
 
-This spawns your existing `$SHELL` inside melon. Everything works as normal — the only difference is that pressing **Tab** opens a fuzzy completion popup instead of running the shell's built-in completion.
+This will populate the following:
+
+```
+# Add this to your shell rc file (~/.zshrc or ~/.bashrc):
+# It wraps your shell in melon for autocomplete support.
+
+if [ -z "$MELON" ] && [ -t 0 ] && [ -t 1 ]; then
+  exec /Users/paul/.cargo/bin/melon
+fi
+```
+
+Everything should work as normal — the only difference is that pressing **Tab** opens a fuzzy completion popup instead of running the shell's built-in completion.
 
 ### Popup controls
 

@@ -23,6 +23,19 @@ enum Mode {
     PopupActive,
 }
 
+/// Remove the last word from `line`, matching shell kill-word (Ctrl+W) behaviour:
+/// trim trailing spaces, then delete back to the previous space boundary.
+fn kill_last_word(line: &mut String) {
+    // Trim trailing whitespace
+    while line.ends_with(' ') {
+        line.pop();
+    }
+    // Delete back to (but not including) the previous space
+    while !line.is_empty() && !line.ends_with(' ') {
+        line.pop();
+    }
+}
+
 /// Spawn the user's shell inside a PTY and proxy I/O between the host terminal
 /// and the child PTY. Returns the child exit code.
 pub async fn run_proxy() -> Result<i32> {
@@ -283,6 +296,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     // No popup — pass through to PTY
                                     let _ = pty_tx.send(vec![0x0b]).await;
                                 }
+                                InputAction::KillWord => {
+                                    kill_last_word(&mut current_line);
+                                    let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
+                                }
+                                InputAction::KillLine => {
+                                    current_line.clear();
+                                    let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
+                                }
                                 _ => {
                                     // Pass through everything else
                                     let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
@@ -365,21 +386,60 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = pty_tx.send(vec![0x7f]).await;
                                     mode = Mode::Passthrough;
                                 }
-                                InputAction::Passthrough(bytes) => {
-                                    // Typing while popup is open — dismiss and pass through
+                                InputAction::KillWord => {
                                     let mut clear_buf = Vec::new();
                                     let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
 
+                                    kill_last_word(&mut current_line);
+                                    let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
+                                    mode = Mode::Passthrough;
+                                }
+                                InputAction::KillLine => {
+                                    let mut clear_buf = Vec::new();
+                                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
+                                    let _ = stdout_tx.send(clear_buf).await;
+                                    popup.dismiss();
+                                    popup_lines = 0;
+
+                                    current_line.clear();
+                                    let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
+                                    mode = Mode::Passthrough;
+                                }
+                                InputAction::Passthrough(bytes) => {
+                                    // Update current_line with the typed character
                                     for &b in &bytes {
                                         if b >= 0x20 {
                                             current_line.push(b as char);
                                         }
                                     }
                                     let _ = pty_tx.send(bytes).await;
-                                    mode = Mode::Passthrough;
+
+                                    // Re-run completion pipeline with updated line
+                                    let (_, partial) = crate::input::parser::split_partial(&current_line);
+                                    let candidates = engine.complete(&current_line);
+                                    let scored = matcher.filter(&partial, candidates);
+
+                                    if !scored.is_empty() {
+                                        // Clear old popup, update items, re-render
+                                        let mut render_buf = Vec::new();
+                                        let _ = renderer.clear(&mut render_buf, popup_row, popup_col_actual, popup_lines);
+                                        popup.set_items(scored);
+                                        let (lines, col) = renderer.render(&mut render_buf, &popup, popup_row, popup_col).unwrap_or((0, popup_col_actual));
+                                        popup_lines = lines;
+                                        popup_col_actual = col;
+                                        let _ = stdout_tx.send(render_buf).await;
+                                    } else {
+                                        // No matches — dismiss popup
+                                        let mut clear_buf = Vec::new();
+                                        let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
+                                        let _ = stdout_tx.send(clear_buf).await;
+                                        popup.dismiss();
+                                        popup_lines = 0;
+                                        mode = Mode::Passthrough;
+                                    }
                                 }
                                 _ => {
                                     // Dismiss on any other action
