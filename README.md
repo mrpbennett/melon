@@ -1,3 +1,93 @@
 <h1 align="center">
     <img src="assets/imgs/melon-logo.png" width="200" alt="Logo"/><br/>
+    melon
 </h1>
+
+<p align="center">
+  Warp-style terminal autocomplete that works in <em>any</em> terminal.
+</p>
+
+---
+
+Melon wraps your shell in a PTY and intercepts Tab to show a floating completion popup with commands, descriptions, and fuzzy matching — no per-shell plugin required.
+
+## Installation
+
+**Prerequisites:** Rust 1.70+ ([install rustup](https://rustup.rs))
+
+```bash
+cargo install --git https://github.com/mrpbennett/melon
+```
+
+This builds melon and places it in `~/.cargo/bin/melon`. Make sure `~/.cargo/bin` is in your `$PATH`.
+
+To update to the latest version, run the same command again.
+
+## Usage
+
+Launch melon from any terminal:
+
+```bash
+melon
+```
+
+This spawns your existing `$SHELL` inside melon. Everything works as normal — the only difference is that pressing **Tab** opens a fuzzy completion popup instead of running the shell's built-in completion.
+
+### Popup controls
+
+| Key               | Action           |
+| ----------------- | ---------------- |
+| `Tab` / `↓`       | Next item        |
+| `Shift+Tab` / `↑` | Previous item    |
+| `Enter`           | Accept selection |
+| `Esc` / `Ctrl+C`  | Dismiss popup    |
+
+## Custom specs
+
+Melon ships with 36 built-in completion specs (git, docker, cargo, npm, kubectl, claude, and more). You can add your own or override builtins by dropping JSON files into:
+
+```
+~/.local/share/melon/specs/
+```
+
+No rebuild required — specs are loaded at startup.
+
+Specs follow the [Fig autocomplete](https://github.com/withfig/autocomplete) format:
+
+```json
+{
+  "name": "mytool",
+  "description": "My custom tool",
+  "subcommands": [{ "name": "run", "description": "Run the thing" }],
+  "options": [{ "name": ["--verbose", "-v"], "description": "Verbose output" }]
+}
+```
+
+## Configuration
+
+Optional config file at `~/.config/melon/config.toml`:
+
+```toml
+max_visible = 8          # Max items shown in the popup (default: 8)
+specs_dir = "~/.local/share/melon/specs"  # Custom specs directory
+```
+
+## Building from source
+
+```bash
+git clone https://github.com/mrpbennett/melon
+cd melon
+cargo build --release
+./target/release/melon
+```
+
+## Debugging
+
+```bash
+melon --debug
+# Logs written to ~/.local/share/melon/melon.log
+```
+
+## Platform
+
+macOS and Linux. Requires a Unix PTY — not compatible with Windows.

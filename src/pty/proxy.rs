@@ -86,6 +86,11 @@ pub async fn run_proxy() -> Result<i32> {
     // Put host terminal into raw mode
     crossterm::terminal::enable_raw_mode().context("failed to enable raw mode")?;
 
+    // Query actual cursor position via DSR (Device Status Report) before stdin thread starts.
+    // crossterm writes \x1b[6n and reads the \x1b[{row};{col}R response directly from stdin,
+    // which is safe here because the stdin reader thread hasn't started yet.
+    let (init_col, init_row) = crossterm::cursor::position().unwrap_or((0, 0));
+
     let shutdown = Arc::new(Notify::new());
 
     // Channel: raw stdin bytes → main loop
@@ -126,10 +131,11 @@ pub async fn run_proxy() -> Result<i32> {
         }
     });
 
-    // Task: PTY reader → stdout (with popup overlay support)
-    // We use a channel so the main loop can also write to stdout (for popup rendering)
+    // Channel: popup renders + forwarded PTY output → stdout writer
     let (stdout_tx, mut stdout_rx) = mpsc::channel::<Vec<u8>>(64);
-    let stdout_tx_pty = stdout_tx.clone();
+
+    // Task: PTY reader → pty_out channel (main loop tracks cursor + forwards to stdout)
+    let (pty_out_tx, mut pty_out_rx) = mpsc::channel::<Vec<u8>>(64);
 
     let shutdown_stdout = shutdown.clone();
     let pty_read_handle = tokio::task::spawn_blocking(move || {
@@ -138,7 +144,7 @@ pub async fn run_proxy() -> Result<i32> {
             match pty_reader.read(&mut buf) {
                 Ok(0) => break,
                 Ok(n) => {
-                    if stdout_tx_pty.blocking_send(buf[..n].to_vec()).is_err() {
+                    if pty_out_tx.blocking_send(buf[..n].to_vec()).is_err() {
                         break;
                     }
                 }
@@ -183,8 +189,14 @@ pub async fn run_proxy() -> Result<i32> {
     let mut mode = Mode::Passthrough;
     let mut current_line = String::new();
     let mut popup_lines: u16 = 0;
-    let mut last_cursor_row: u16 = 0;
-    let mut last_cursor_col: u16 = 0;
+    // Cursor tracking: initialised from DSR query, updated via PTY output newlines.
+    let mut last_cursor_row: u16 = init_row;
+    let mut last_cursor_col: u16 = init_col;
+    // Snapshot of cursor position when the popup was opened (used for render/clear).
+    let mut popup_row: u16 = 0;
+    let mut popup_col: u16 = 0;
+    // Actual column render() placed the popup at (may differ from popup_col when near right edge).
+    let mut popup_col_actual: u16 = 0;
     let mut child_exited = false;
 
     loop {
@@ -209,15 +221,15 @@ pub async fn run_proxy() -> Result<i32> {
                                         if !scored.is_empty() {
                                             popup.set_items(scored);
                                             mode = Mode::PopupActive;
-                                            // Get cursor position for rendering
-                                            let (_, term_rows) = crossterm::terminal::size().unwrap_or((80, 24));
-                                            // Use DSR (Device Status Report) to get cursor position
-                                            // For now, estimate from terminal size
-                                            last_cursor_row = term_rows.saturating_sub(1);
-                                            last_cursor_col = current_line.len() as u16;
-                                            // Render popup
+                                            // Snapshot cursor position for this popup's lifetime.
+                                            // last_cursor_row is maintained from DSR + PTY newline tracking.
+                                            popup_row = last_cursor_row;
+                                            popup_col = last_cursor_col;
+                                            // Render popup; capture the actual column it was drawn at.
                                             let mut render_buf = Vec::new();
-                                            popup_lines = renderer.render(&mut render_buf, &popup, last_cursor_row, last_cursor_col).unwrap_or(0);
+                                            let (lines, col) = renderer.render(&mut render_buf, &popup, popup_row, popup_col).unwrap_or((0, popup_col));
+                                            popup_lines = lines;
+                                            popup_col_actual = col;
                                             let _ = stdout_tx.send(render_buf).await;
                                         } else {
                                             // No completions — pass tab through
@@ -256,6 +268,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     current_line.clear();
                                     let _ = pty_tx.send(vec![0x1a]).await;
                                 }
+                                InputAction::CtrlJ => {
+                                    // No popup — pass LF through to PTY
+                                    let _ = pty_tx.send(vec![0x0a]).await;
+                                }
+                                InputAction::CtrlK => {
+                                    // No popup — pass through to PTY
+                                    let _ = pty_tx.send(vec![0x0b]).await;
+                                }
                                 _ => {
                                     // Pass through everything else
                                     let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
@@ -264,16 +284,20 @@ pub async fn run_proxy() -> Result<i32> {
                         }
                         Mode::PopupActive => {
                             match action {
-                                InputAction::Down | InputAction::Tab => {
+                                InputAction::Down | InputAction::Tab | InputAction::CtrlJ => {
                                     popup.select_next();
                                     let mut render_buf = Vec::new();
-                                    popup_lines = renderer.render(&mut render_buf, &popup, last_cursor_row, last_cursor_col).unwrap_or(0);
+                                    let (lines, col) = renderer.render(&mut render_buf, &popup, popup_row, popup_col).unwrap_or((0, popup_col_actual));
+                                    popup_lines = lines;
+                                    popup_col_actual = col;
                                     let _ = stdout_tx.send(render_buf).await;
                                 }
-                                InputAction::Up | InputAction::ShiftTab => {
+                                InputAction::Up | InputAction::ShiftTab | InputAction::CtrlK => {
                                     popup.select_prev();
                                     let mut render_buf = Vec::new();
-                                    popup_lines = renderer.render(&mut render_buf, &popup, last_cursor_row, last_cursor_col).unwrap_or(0);
+                                    let (lines, col) = renderer.render(&mut render_buf, &popup, popup_row, popup_col).unwrap_or((0, popup_col_actual));
+                                    popup_lines = lines;
+                                    popup_col_actual = col;
                                     let _ = stdout_tx.send(render_buf).await;
                                 }
                                 InputAction::Enter => {
@@ -282,7 +306,7 @@ pub async fn run_proxy() -> Result<i32> {
                                         let text = text.to_string();
                                         // Clear popup first
                                         let mut clear_buf = Vec::new();
-                                        let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                                        let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                         let _ = stdout_tx.send(clear_buf).await;
 
                                         // Calculate how much to backspace (remove partial)
@@ -312,7 +336,7 @@ pub async fn run_proxy() -> Result<i32> {
                                 InputAction::Escape | InputAction::CtrlC => {
                                     // Dismiss popup
                                     let mut clear_buf = Vec::new();
-                                    let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
@@ -323,9 +347,9 @@ pub async fn run_proxy() -> Result<i32> {
                                     }
                                 }
                                 InputAction::Backspace => {
-                                    // Dismiss popup, pass through backspace, retrigger
+                                    // Dismiss popup, pass through backspace
                                     let mut clear_buf = Vec::new();
-                                    let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
@@ -337,7 +361,7 @@ pub async fn run_proxy() -> Result<i32> {
                                 InputAction::Passthrough(bytes) => {
                                     // Typing while popup is open — dismiss and pass through
                                     let mut clear_buf = Vec::new();
-                                    let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
@@ -353,7 +377,7 @@ pub async fn run_proxy() -> Result<i32> {
                                 _ => {
                                     // Dismiss on any other action
                                     let mut clear_buf = Vec::new();
-                                    let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
@@ -366,13 +390,65 @@ pub async fn run_proxy() -> Result<i32> {
                 }
             }
 
+            // PTY output: track cursor position, then forward to stdout
+            Some(data) = pty_out_rx.recv() => {
+                let (_, term_rows) = crossterm::terminal::size().unwrap_or((80, 24));
+                let mut i = 0;
+                while i < data.len() {
+                    match data[i] {
+                        b'\n' => {
+                            // Newline moves cursor down; at the bottom the terminal scrolls
+                            // but the cursor stays on the last row.
+                            if last_cursor_row < term_rows.saturating_sub(1) {
+                                last_cursor_row += 1;
+                            }
+                            i += 1;
+                        }
+                        b'\r' => {
+                            last_cursor_col = 0;
+                            i += 1;
+                        }
+                        0x1b if i + 1 < data.len() && data[i + 1] == b'[' => {
+                            // Parse CSI sequences for cursor position tracking.
+                            // Handle \x1b[H (cursor home) and \x1b[row;colH (cursor position).
+                            let seq_start = i + 2;
+                            let mut j = seq_start;
+                            while j < data.len() && (data[j].is_ascii_digit() || data[j] == b';') {
+                                j += 1;
+                            }
+                            if j < data.len() && data[j] == b'H' {
+                                // Cursor position command
+                                let params = std::str::from_utf8(&data[seq_start..j]).unwrap_or("");
+                                if params.is_empty() {
+                                    // \x1b[H — home position
+                                    last_cursor_row = 0;
+                                    last_cursor_col = 0;
+                                } else if let Some((row_str, col_str)) = params.split_once(';') {
+                                    let row: u16 = row_str.parse().unwrap_or(1);
+                                    let col: u16 = col_str.parse().unwrap_or(1);
+                                    last_cursor_row = row.saturating_sub(1);
+                                    last_cursor_col = col.saturating_sub(1);
+                                }
+                                i = j + 1;
+                            } else {
+                                i += 1;
+                            }
+                        }
+                        _ => {
+                            i += 1;
+                        }
+                    }
+                }
+                let _ = stdout_tx.send(data).await;
+            }
+
             // Child process exited
             Some(_success) = child_rx.recv() => {
                 child_exited = true;
                 // Clean up popup if active
                 if mode == Mode::PopupActive {
                     let mut clear_buf = Vec::new();
-                    let _ = renderer.clear(&mut clear_buf, last_cursor_row, last_cursor_col, popup_lines, 80);
+                    let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
                     let _ = stdout_tx.send(clear_buf).await;
                 }
                 // Let remaining PTY output drain

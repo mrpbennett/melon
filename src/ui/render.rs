@@ -19,16 +19,16 @@ impl PopupRenderer {
     }
 
     /// Render the popup at the given cursor position (row, col).
-    /// Returns the number of lines drawn (for clearing later).
+    /// Returns `(lines_drawn, actual_popup_col)` for use by `clear()`.
     pub fn render(
         &self,
         stdout: &mut impl Write,
         state: &PopupState,
         cursor_row: u16,
         cursor_col: u16,
-    ) -> std::io::Result<u16> {
+    ) -> std::io::Result<(u16, u16)> {
         if !state.visible || state.items.is_empty() {
-            return Ok(0);
+            return Ok((0, cursor_col));
         }
 
         let (term_cols, term_rows) = terminal::size().unwrap_or((80, 24));
@@ -193,17 +193,18 @@ impl PopupRenderer {
 
         stdout.flush()?;
 
-        Ok(visible_count as u16 + 2) // items + top/bottom border
+        Ok((visible_count as u16 + 2, popup_col)) // (items + top/bottom border, actual col)
     }
 
-    /// Clear the popup area by overwriting with spaces.
+    /// Clear the popup area.
+    /// `cursor_row` and `popup_col` must be the values from the matching `render()` call
+    /// (i.e. `popup_col` is the *actual* column `render()` used, not the raw cursor column).
     pub fn clear(
         &self,
         stdout: &mut impl Write,
         cursor_row: u16,
-        cursor_col: u16,
+        popup_col: u16,
         lines: u16,
-        width: u16,
     ) -> std::io::Result<()> {
         if lines == 0 {
             return Ok(());
@@ -221,14 +222,14 @@ impl PopupRenderer {
         for i in 0..lines {
             crossterm::execute!(
                 stdout,
-                cursor::MoveTo(cursor_col, popup_row + i),
-                style::Print(" ".repeat(width as usize)),
+                cursor::MoveTo(popup_col, popup_row + i),
+                style::ResetColor,
+                terminal::Clear(terminal::ClearType::UntilNewLine),
             )?;
         }
 
         crossterm::execute!(
             stdout,
-            style::ResetColor,
             cursor::RestorePosition,
         )?;
         stdout.flush()?;
