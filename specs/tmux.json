@@ -1,0 +1,470 @@
+{
+  "name": "tmux",
+  "description": "Terminal multiplexer",
+  "options": [
+    {
+      "name": "-u",
+      "description": "Instruct tmux that UTF-8 is supported"
+    },
+    {
+      "name": "-f",
+      "description": "Specify an alternative configuration file",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "-L",
+      "description": "Specify a socket name",
+      "args": {
+        "name": "socket-name"
+      }
+    },
+    {
+      "name": "-S",
+      "description": "Specify a full path to a server socket",
+      "args": {
+        "name": "socket-path",
+        "template": "filepaths"
+      }
+    }
+  ],
+  "subcommands": [
+    {
+      "name": ["new-session", "new"],
+      "description": "Create a new session",
+      "options": [
+        {
+          "name": "-d",
+          "description": "Do not attach the new session to the current terminal"
+        },
+        {
+          "name": "-s",
+          "description": "Specify a session name",
+          "args": {
+            "name": "session-name"
+          }
+        },
+        {
+          "name": "-n",
+          "description": "Name the initial window",
+          "args": {
+            "name": "window-name"
+          }
+        },
+        {
+          "name": "-t",
+          "description": "Group the session with the named session",
+          "args": {
+            "name": "group-name"
+          }
+        },
+        {
+          "name": "-x",
+          "description": "Set the width of the session",
+          "args": {
+            "name": "width"
+          }
+        },
+        {
+          "name": "-y",
+          "description": "Set the height of the session",
+          "args": {
+            "name": "height"
+          }
+        },
+        {
+          "name": "-c",
+          "description": "Specify starting directory",
+          "args": {
+            "name": "start-directory",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "shell-command",
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["attach-session", "attach", "a"],
+      "description": "Attach to an existing session",
+      "options": [
+        {
+          "name": "-d",
+          "description": "Detach other clients attached to the session"
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target session",
+          "args": {
+            "name": "target-session"
+          }
+        },
+        {
+          "name": "-r",
+          "description": "Attach in read-only mode"
+        }
+      ]
+    },
+    {
+      "name": ["kill-session"],
+      "description": "Destroy a session",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target session",
+          "args": {
+            "name": "target-session"
+          }
+        },
+        {
+          "name": "-a",
+          "description": "Kill all sessions except the one specified by -t"
+        }
+      ]
+    },
+    {
+      "name": ["list-sessions", "ls"],
+      "description": "List all sessions",
+      "options": [
+        {
+          "name": "-F",
+          "description": "Specify the format string",
+          "args": {
+            "name": "format"
+          }
+        }
+      ]
+    },
+    {
+      "name": ["new-window", "neww"],
+      "description": "Create a new window",
+      "options": [
+        {
+          "name": "-d",
+          "description": "Do not make the new window the current window"
+        },
+        {
+          "name": "-n",
+          "description": "Specify a name for the window",
+          "args": {
+            "name": "window-name"
+          }
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target window",
+          "args": {
+            "name": "target-window"
+          }
+        },
+        {
+          "name": "-c",
+          "description": "Specify starting directory",
+          "args": {
+            "name": "start-directory",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "shell-command",
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["split-window", "splitw"],
+      "description": "Split a pane into two",
+      "options": [
+        {
+          "name": "-h",
+          "description": "Split horizontally (create a left/right split)"
+        },
+        {
+          "name": "-v",
+          "description": "Split vertically (create a top/bottom split)"
+        },
+        {
+          "name": "-d",
+          "description": "Do not make the new pane the current pane"
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target pane",
+          "args": {
+            "name": "target-pane"
+          }
+        },
+        {
+          "name": "-l",
+          "description": "Set the size of the new pane",
+          "args": {
+            "name": "size"
+          }
+        },
+        {
+          "name": "-p",
+          "description": "Set the percentage size of the new pane",
+          "args": {
+            "name": "percentage"
+          }
+        },
+        {
+          "name": "-c",
+          "description": "Specify starting directory",
+          "args": {
+            "name": "start-directory",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "shell-command",
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["select-pane", "selectp"],
+      "description": "Make a pane the active pane",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target pane",
+          "args": {
+            "name": "target-pane"
+          }
+        },
+        {
+          "name": "-U",
+          "description": "Select the pane above"
+        },
+        {
+          "name": "-D",
+          "description": "Select the pane below"
+        },
+        {
+          "name": "-L",
+          "description": "Select the pane to the left"
+        },
+        {
+          "name": "-R",
+          "description": "Select the pane to the right"
+        },
+        {
+          "name": "-l",
+          "description": "Select the last (previously active) pane"
+        }
+      ]
+    },
+    {
+      "name": ["list-windows", "lsw"],
+      "description": "List windows in a session",
+      "options": [
+        {
+          "name": "-a",
+          "description": "List all windows on the server"
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target session",
+          "args": {
+            "name": "target-session"
+          }
+        },
+        {
+          "name": "-F",
+          "description": "Specify the format string",
+          "args": {
+            "name": "format"
+          }
+        }
+      ]
+    },
+    {
+      "name": ["kill-window", "killw"],
+      "description": "Destroy a window",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target window",
+          "args": {
+            "name": "target-window"
+          }
+        },
+        {
+          "name": "-a",
+          "description": "Kill all windows except the one specified by -t"
+        }
+      ]
+    },
+    {
+      "name": ["detach-client", "detach"],
+      "description": "Detach a client from the server",
+      "options": [
+        {
+          "name": "-s",
+          "description": "Specify the session to detach from",
+          "args": {
+            "name": "target-session"
+          }
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target client",
+          "args": {
+            "name": "target-client"
+          }
+        },
+        {
+          "name": "-a",
+          "description": "Kill all clients except the specified one"
+        }
+      ]
+    },
+    {
+      "name": ["source-file", "source"],
+      "description": "Execute commands from a file",
+      "options": [
+        {
+          "name": "-q",
+          "description": "Do not report errors for nonexistent files"
+        }
+      ],
+      "args": {
+        "name": "path",
+        "template": "filepaths",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": ["send-keys", "send"],
+      "description": "Send key(s) to a window",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target pane",
+          "args": {
+            "name": "target-pane"
+          }
+        },
+        {
+          "name": "-l",
+          "description": "Disable key name lookup and send the keys literally"
+        }
+      ],
+      "args": {
+        "name": "key",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": ["kill-server"],
+      "description": "Kill the tmux server and clients and destroy all sessions"
+    },
+    {
+      "name": ["rename-session", "rename"],
+      "description": "Rename a session",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target session",
+          "args": {
+            "name": "target-session"
+          }
+        }
+      ],
+      "args": {
+        "name": "new-name"
+      }
+    },
+    {
+      "name": ["rename-window", "renamew"],
+      "description": "Rename a window",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target window",
+          "args": {
+            "name": "target-window"
+          }
+        }
+      ],
+      "args": {
+        "name": "new-name"
+      }
+    },
+    {
+      "name": ["list-panes", "lsp"],
+      "description": "List panes in a window",
+      "options": [
+        {
+          "name": "-a",
+          "description": "List all panes on the server"
+        },
+        {
+          "name": "-s",
+          "description": "List all panes in the session"
+        },
+        {
+          "name": "-t",
+          "description": "Specify the target window",
+          "args": {
+            "name": "target-window"
+          }
+        }
+      ]
+    },
+    {
+      "name": ["resize-pane", "resizep"],
+      "description": "Resize a pane",
+      "options": [
+        {
+          "name": "-t",
+          "description": "Specify the target pane",
+          "args": {
+            "name": "target-pane"
+          }
+        },
+        {
+          "name": "-U",
+          "description": "Resize the pane upward",
+          "args": {
+            "name": "adjustment",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "-D",
+          "description": "Resize the pane downward",
+          "args": {
+            "name": "adjustment",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "-L",
+          "description": "Resize the pane to the left",
+          "args": {
+            "name": "adjustment",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "-R",
+          "description": "Resize the pane to the right",
+          "args": {
+            "name": "adjustment",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "-Z",
+          "description": "Toggle the zoom state of the pane"
+        }
+      ]
+    }
+  ]
+}

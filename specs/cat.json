@@ -1,0 +1,47 @@
+{
+  "name": "cat",
+  "description": "Concatenate and print files",
+  "options": [
+    {
+      "name": "-n",
+      "description": "Number all output lines"
+    },
+    {
+      "name": "-b",
+      "description": "Number non-blank output lines, overrides -n"
+    },
+    {
+      "name": "-s",
+      "description": "Squeeze multiple adjacent empty lines into one"
+    },
+    {
+      "name": "-v",
+      "description": "Display non-printing characters"
+    },
+    {
+      "name": "-e",
+      "description": "Display non-printing characters and show $ at end of each line"
+    },
+    {
+      "name": "-t",
+      "description": "Display non-printing characters and show tabs as ^I"
+    },
+    {
+      "name": "-A",
+      "description": "Equivalent to -vET, show all non-printing characters"
+    },
+    {
+      "name": "-E",
+      "description": "Display $ at end of each line"
+    },
+    {
+      "name": "-T",
+      "description": "Display TAB characters as ^I"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true
+  }
+}

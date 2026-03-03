@@ -1,0 +1,1058 @@
+{
+  "name": "kubectl",
+  "description": "Kubernetes command-line tool",
+  "options": [
+    {
+      "name": ["-n", "--namespace"],
+      "description": "Specify the namespace scope for this request",
+      "args": {
+        "name": "namespace"
+      }
+    },
+    {
+      "name": ["-o", "--output"],
+      "description": "Output format",
+      "args": {
+        "name": "format",
+        "suggestions": ["json", "yaml", "wide", "name", "jsonpath", "go-template"]
+      }
+    },
+    {
+      "name": ["-l", "--selector"],
+      "description": "Selector (label query) to filter on",
+      "args": {
+        "name": "selector"
+      }
+    },
+    {
+      "name": ["-A", "--all-namespaces"],
+      "description": "List the requested objects across all namespaces"
+    },
+    {
+      "name": "--context",
+      "description": "The name of the kubeconfig context to use",
+      "args": {
+        "name": "context"
+      }
+    },
+    {
+      "name": "--kubeconfig",
+      "description": "Path to the kubeconfig file to use",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-v", "--v"],
+      "description": "Number for the log level verbosity",
+      "args": {
+        "name": "level"
+      }
+    }
+  ],
+  "subcommands": [
+    {
+      "name": "get",
+      "description": "Display one or many resources",
+      "options": [
+        {
+          "name": ["-o", "--output"],
+          "description": "Output format",
+          "args": {
+            "name": "format",
+            "suggestions": ["json", "yaml", "wide", "name", "jsonpath", "go-template"]
+          }
+        },
+        {
+          "name": ["-w", "--watch"],
+          "description": "Watch for changes after listing/getting the requested objects"
+        },
+        {
+          "name": "--show-labels",
+          "description": "Show all labels as the last column"
+        },
+        {
+          "name": "--sort-by",
+          "description": "Sort list types using the specified field",
+          "args": {
+            "name": "field"
+          }
+        },
+        {
+          "name": ["-f", "--filename"],
+          "description": "Filename to identify the resource to get",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": "--field-selector",
+          "description": "Selector to filter on (field query)",
+          "args": {
+            "name": "selector"
+          }
+        },
+        {
+          "name": "--no-headers",
+          "description": "Do not print headers"
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "suggestions": ["pods", "services", "deployments", "nodes", "namespaces", "configmaps", "secrets", "ingress", "pv", "pvc", "statefulsets", "daemonsets", "jobs", "cronjobs", "replicasets", "events", "serviceaccounts", "endpoints", "networkpolicies", "storageclasses", "hpa", "all"],
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "describe",
+      "description": "Show details of a specific resource or group of resources",
+      "options": [
+        {
+          "name": ["-f", "--filename"],
+          "description": "Filename to identify the resource to describe",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "suggestions": ["pod", "service", "deployment", "node", "namespace", "configmap", "secret", "ingress", "pv", "pvc", "statefulset", "daemonset", "job", "cronjob", "replicaset", "event", "serviceaccount", "hpa"],
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "apply",
+      "description": "Apply a configuration to a resource by file name or stdin",
+      "options": [
+        {
+          "name": ["-f", "--filename"],
+          "description": "Files that contain the configurations to apply",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": ["-k", "--kustomize"],
+          "description": "Process a kustomization directory",
+          "args": {
+            "name": "directory",
+            "template": "folders"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        },
+        {
+          "name": "--force",
+          "description": "Delete and re-create the resource if needed"
+        },
+        {
+          "name": "--prune",
+          "description": "Automatically delete resource objects that do not appear in the configs"
+        },
+        {
+          "name": ["-R", "--recursive"],
+          "description": "Process the directory used in -f recursively"
+        },
+        {
+          "name": "--server-side",
+          "description": "Submit server-side request"
+        }
+      ]
+    },
+    {
+      "name": "delete",
+      "description": "Delete resources by file names, stdin, resources, or by resources and names",
+      "options": [
+        {
+          "name": ["-f", "--filename"],
+          "description": "Files that contain the resources to delete",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": "--all",
+          "description": "Delete all resources in the namespace"
+        },
+        {
+          "name": "--grace-period",
+          "description": "Period of time in seconds given to the resource to terminate gracefully",
+          "args": {
+            "name": "seconds"
+          }
+        },
+        {
+          "name": "--force",
+          "description": "Immediately remove resources from API and bypass graceful deletion"
+        },
+        {
+          "name": "--now",
+          "description": "Signal immediate shutdown"
+        },
+        {
+          "name": "--cascade",
+          "description": "Must be background, orphan, or foreground",
+          "args": {
+            "name": "policy",
+            "suggestions": ["background", "orphan", "foreground"]
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "logs",
+      "description": "Print the logs for a container in a pod",
+      "options": [
+        {
+          "name": ["-f", "--follow"],
+          "description": "Specify if the logs should be streamed"
+        },
+        {
+          "name": ["-c", "--container"],
+          "description": "Print the logs of this container",
+          "args": {
+            "name": "container"
+          }
+        },
+        {
+          "name": ["-p", "--previous"],
+          "description": "Print the logs for the previous instance of the container"
+        },
+        {
+          "name": "--since",
+          "description": "Only return logs newer than a relative duration like 5s, 2m, or 3h",
+          "args": {
+            "name": "duration"
+          }
+        },
+        {
+          "name": "--since-time",
+          "description": "Only return logs after a specific date (RFC3339)",
+          "args": {
+            "name": "time"
+          }
+        },
+        {
+          "name": "--tail",
+          "description": "Lines of recent log file to display",
+          "args": {
+            "name": "lines"
+          }
+        },
+        {
+          "name": "--timestamps",
+          "description": "Include timestamps on each line"
+        },
+        {
+          "name": "--all-containers",
+          "description": "Get all containers' logs in the pod"
+        },
+        {
+          "name": "--max-log-requests",
+          "description": "Specify maximum number of concurrent logs to follow",
+          "args": {
+            "name": "count"
+          }
+        },
+        {
+          "name": "--prefix",
+          "description": "Prefix each log line with the pod and container name"
+        }
+      ],
+      "args": {
+        "name": "pod",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "exec",
+      "description": "Execute a command in a container",
+      "options": [
+        {
+          "name": ["-i", "--stdin"],
+          "description": "Pass stdin to the container"
+        },
+        {
+          "name": ["-t", "--tty"],
+          "description": "Stdin is a TTY"
+        },
+        {
+          "name": ["-c", "--container"],
+          "description": "Container name",
+          "args": {
+            "name": "container"
+          }
+        }
+      ],
+      "args": {
+        "name": "pod -- command",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "port-forward",
+      "description": "Forward one or more local ports to a pod",
+      "options": [
+        {
+          "name": "--address",
+          "description": "Addresses to listen on (comma separated)",
+          "args": {
+            "name": "addresses"
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "resource"
+        },
+        {
+          "name": "port",
+          "isVariadic": true
+        }
+      ]
+    },
+    {
+      "name": "create",
+      "description": "Create a resource from a file or from stdin",
+      "options": [
+        {
+          "name": ["-f", "--filename"],
+          "description": "Files that contain the resource definitions to create",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "namespace",
+          "description": "Create a namespace with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "secret",
+          "description": "Create a secret",
+          "subcommands": [
+            {
+              "name": "generic",
+              "description": "Create a secret from a local file, directory, or literal value",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": "tls",
+              "description": "Create a TLS secret",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": "docker-registry",
+              "description": "Create a secret for use with a Docker registry",
+              "args": {
+                "name": "name"
+              }
+            }
+          ]
+        },
+        {
+          "name": "configmap",
+          "description": "Create a configmap from a local file, directory, or literal value",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "deployment",
+          "description": "Create a deployment with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "service",
+          "description": "Create a service",
+          "subcommands": [
+            {
+              "name": "clusterip",
+              "description": "Create a ClusterIP service",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": "nodeport",
+              "description": "Create a NodePort service",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": "loadbalancer",
+              "description": "Create a LoadBalancer service",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": "externalname",
+              "description": "Create an ExternalName service",
+              "args": {
+                "name": "name"
+              }
+            }
+          ]
+        },
+        {
+          "name": "job",
+          "description": "Create a job with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "cronjob",
+          "description": "Create a cron job with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "serviceaccount",
+          "description": "Create a service account with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "ingress",
+          "description": "Create an ingress with the specified name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "role",
+          "description": "Create a role with single rule",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "rolebinding",
+          "description": "Create a role binding for a particular role",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "clusterrole",
+          "description": "Create a cluster role",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "clusterrolebinding",
+          "description": "Create a cluster role binding for a particular cluster role",
+          "args": {
+            "name": "name"
+          }
+        }
+      ]
+    },
+    {
+      "name": "edit",
+      "description": "Edit a resource on the server",
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "scale",
+      "description": "Set a new size for a deployment, replica set, or stateful set",
+      "options": [
+        {
+          "name": "--replicas",
+          "description": "The new desired number of replicas",
+          "args": {
+            "name": "count"
+          }
+        },
+        {
+          "name": "--current-replicas",
+          "description": "Precondition for current size",
+          "args": {
+            "name": "count"
+          }
+        },
+        {
+          "name": "--timeout",
+          "description": "The length of time to wait before giving up on a scale operation",
+          "args": {
+            "name": "duration"
+          }
+        },
+        {
+          "name": ["-f", "--filename"],
+          "description": "Filename to identify the resource to scale",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "rollout",
+      "description": "Manage the rollout of a resource",
+      "subcommands": [
+        {
+          "name": "status",
+          "description": "Show the status of the rollout",
+          "options": [
+            {
+              "name": ["-w", "--watch"],
+              "description": "Watch the status of the rollout until it's done"
+            },
+            {
+              "name": "--timeout",
+              "description": "The length of time to wait before ending watch",
+              "args": {
+                "name": "duration"
+              }
+            }
+          ],
+          "args": {
+            "name": "resource"
+          }
+        },
+        {
+          "name": "undo",
+          "description": "Undo a previous rollout",
+          "options": [
+            {
+              "name": "--to-revision",
+              "description": "The revision to rollback to",
+              "args": {
+                "name": "revision"
+              }
+            },
+            {
+              "name": "--dry-run",
+              "description": "Must be none, server, or client",
+              "args": {
+                "name": "strategy",
+                "suggestions": ["none", "server", "client"]
+              }
+            }
+          ],
+          "args": {
+            "name": "resource"
+          }
+        },
+        {
+          "name": "restart",
+          "description": "Restart a resource",
+          "args": {
+            "name": "resource"
+          }
+        },
+        {
+          "name": "history",
+          "description": "View rollout history",
+          "options": [
+            {
+              "name": "--revision",
+              "description": "See the details of a specific revision",
+              "args": {
+                "name": "revision"
+              }
+            }
+          ],
+          "args": {
+            "name": "resource"
+          }
+        },
+        {
+          "name": "pause",
+          "description": "Mark the provided resource as paused",
+          "args": {
+            "name": "resource"
+          }
+        },
+        {
+          "name": "resume",
+          "description": "Resume a paused resource",
+          "args": {
+            "name": "resource"
+          }
+        }
+      ]
+    },
+    {
+      "name": "config",
+      "description": "Modify kubeconfig files",
+      "subcommands": [
+        {
+          "name": "use-context",
+          "description": "Set the current-context in a kubeconfig file",
+          "args": {
+            "name": "context"
+          }
+        },
+        {
+          "name": "get-contexts",
+          "description": "Display one or many contexts from the kubeconfig file",
+          "options": [
+            {
+              "name": "--no-headers",
+              "description": "Do not print headers"
+            }
+          ],
+          "args": {
+            "name": "context",
+            "isOptional": true,
+            "isVariadic": true
+          }
+        },
+        {
+          "name": "set-context",
+          "description": "Set a context entry in kubeconfig",
+          "options": [
+            {
+              "name": "--cluster",
+              "description": "Set the cluster for the context",
+              "args": {
+                "name": "cluster"
+              }
+            },
+            {
+              "name": "--user",
+              "description": "Set the user for the context",
+              "args": {
+                "name": "user"
+              }
+            },
+            {
+              "name": "--namespace",
+              "description": "Set the namespace for the context",
+              "args": {
+                "name": "namespace"
+              }
+            },
+            {
+              "name": "--current",
+              "description": "Modify the current context"
+            }
+          ],
+          "args": {
+            "name": "context"
+          }
+        },
+        {
+          "name": "view",
+          "description": "Display merged kubeconfig settings",
+          "options": [
+            {
+              "name": "--minify",
+              "description": "Remove all information not used by current-context"
+            },
+            {
+              "name": "--flatten",
+              "description": "Flatten the resulting kubeconfig file into self-contained output"
+            },
+            {
+              "name": "--raw",
+              "description": "Display raw byte data and sensitive data"
+            }
+          ]
+        },
+        {
+          "name": "current-context",
+          "description": "Display the current context"
+        },
+        {
+          "name": "delete-context",
+          "description": "Delete the specified context from the kubeconfig",
+          "args": {
+            "name": "context"
+          }
+        },
+        {
+          "name": "set-cluster",
+          "description": "Set a cluster entry in kubeconfig",
+          "args": {
+            "name": "cluster"
+          }
+        },
+        {
+          "name": "delete-cluster",
+          "description": "Delete the specified cluster from the kubeconfig",
+          "args": {
+            "name": "cluster"
+          }
+        },
+        {
+          "name": "rename-context",
+          "description": "Rename a context from the kubeconfig file",
+          "args": [
+            {
+              "name": "old-name"
+            },
+            {
+              "name": "new-name"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "top",
+      "description": "Display resource usage",
+      "subcommands": [
+        {
+          "name": "nodes",
+          "description": "Display resource usage of nodes",
+          "options": [
+            {
+              "name": "--sort-by",
+              "description": "Sort by cpu or memory",
+              "args": {
+                "name": "field",
+                "suggestions": ["cpu", "memory"]
+              }
+            },
+            {
+              "name": "--no-headers",
+              "description": "Do not print headers"
+            }
+          ],
+          "args": {
+            "name": "node",
+            "isOptional": true,
+            "isVariadic": true
+          }
+        },
+        {
+          "name": "pods",
+          "description": "Display resource usage of pods",
+          "options": [
+            {
+              "name": "--containers",
+              "description": "Show metrics for all containers"
+            },
+            {
+              "name": "--sort-by",
+              "description": "Sort by cpu or memory",
+              "args": {
+                "name": "field",
+                "suggestions": ["cpu", "memory"]
+              }
+            },
+            {
+              "name": "--no-headers",
+              "description": "Do not print headers"
+            }
+          ],
+          "args": {
+            "name": "pod",
+            "isOptional": true,
+            "isVariadic": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "label",
+      "description": "Update the labels on a resource",
+      "options": [
+        {
+          "name": "--overwrite",
+          "description": "Overwrite the existing labels"
+        },
+        {
+          "name": "--all",
+          "description": "Select all resources in the namespace"
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "annotate",
+      "description": "Update the annotations on a resource",
+      "options": [
+        {
+          "name": "--overwrite",
+          "description": "Overwrite the existing annotations"
+        },
+        {
+          "name": "--all",
+          "description": "Select all resources in the namespace"
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "patch",
+      "description": "Update fields of a resource",
+      "options": [
+        {
+          "name": ["-p", "--patch"],
+          "description": "The patch to be applied to the resource JSON",
+          "args": {
+            "name": "patch"
+          }
+        },
+        {
+          "name": "--type",
+          "description": "The type of patch being provided",
+          "args": {
+            "name": "type",
+            "suggestions": ["json", "merge", "strategic"]
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "cp",
+      "description": "Copy files and directories to and from containers",
+      "options": [
+        {
+          "name": ["-c", "--container"],
+          "description": "Container name",
+          "args": {
+            "name": "container"
+          }
+        },
+        {
+          "name": "--no-preserve",
+          "description": "The copied file/directory's ownership and permissions will not be preserved"
+        }
+      ],
+      "args": [
+        {
+          "name": "source"
+        },
+        {
+          "name": "destination"
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "description": "Create and run a particular image in a pod",
+      "options": [
+        {
+          "name": "--image",
+          "description": "The image for the container to run",
+          "args": {
+            "name": "image"
+          }
+        },
+        {
+          "name": "--port",
+          "description": "The port that this container exposes",
+          "args": {
+            "name": "port"
+          }
+        },
+        {
+          "name": "--env",
+          "description": "Environment variables to set in the container",
+          "args": {
+            "name": "key=value"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": "--dry-run",
+          "description": "Must be none, server, or client",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["none", "server", "client"]
+          }
+        },
+        {
+          "name": ["-i", "--stdin"],
+          "description": "Keep stdin open on the container in the pod"
+        },
+        {
+          "name": ["-t", "--tty"],
+          "description": "Allocate a TTY"
+        },
+        {
+          "name": "--rm",
+          "description": "Delete the pod after it exits"
+        },
+        {
+          "name": "--restart",
+          "description": "The restart policy for this pod",
+          "args": {
+            "name": "policy",
+            "suggestions": ["Always", "OnFailure", "Never"]
+          }
+        },
+        {
+          "name": "--command",
+          "description": "Use extra arguments as the command field, not the default entrypoint"
+        }
+      ],
+      "args": {
+        "name": "name"
+      }
+    },
+    {
+      "name": "wait",
+      "description": "Wait for a specific condition on one or many resources",
+      "options": [
+        {
+          "name": "--for",
+          "description": "The condition to wait on",
+          "args": {
+            "name": "condition"
+          }
+        },
+        {
+          "name": "--timeout",
+          "description": "The length of time to wait before giving up",
+          "args": {
+            "name": "duration"
+          }
+        },
+        {
+          "name": ["-f", "--filename"],
+          "description": "Filename to wait on",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        }
+      ],
+      "args": {
+        "name": "resource",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "explain",
+      "description": "Get documentation for a resource",
+      "options": [
+        {
+          "name": "--recursive",
+          "description": "Print the fields of fields"
+        }
+      ],
+      "args": {
+        "name": "resource"
+      }
+    },
+    {
+      "name": "diff",
+      "description": "Diff the live version against a would-be applied version",
+      "options": [
+        {
+          "name": ["-f", "--filename"],
+          "description": "Filename to diff",
+          "args": {
+            "name": "filename",
+            "template": "filepaths"
+          },
+          "isRepeatable": true
+        }
+      ]
+    },
+    {
+      "name": "cluster-info",
+      "description": "Display cluster information"
+    },
+    {
+      "name": "version",
+      "description": "Print the client and server version information",
+      "options": [
+        {
+          "name": "--client",
+          "description": "Print only the client version"
+        },
+        {
+          "name": "--short",
+          "description": "Print just the version number"
+        }
+      ]
+    }
+  ]
+}

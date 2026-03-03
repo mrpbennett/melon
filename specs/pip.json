@@ -1,0 +1,363 @@
+{
+  "name": ["pip3", "pip"],
+  "description": "Python package installer",
+  "options": [
+    {
+      "name": ["-V", "--version"],
+      "description": "Show version and exit"
+    },
+    {
+      "name": ["-h", "--help"],
+      "description": "Show help message and exit"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Give more output",
+      "isRepeatable": true
+    },
+    {
+      "name": ["-q", "--quiet"],
+      "description": "Give less output",
+      "isRepeatable": true
+    }
+  ],
+  "subcommands": [
+    {
+      "name": "install",
+      "description": "Install packages",
+      "options": [
+        {
+          "name": ["-r", "--requirement"],
+          "description": "Install from the given requirements file",
+          "args": {
+            "name": "file",
+            "template": "filepaths"
+          }
+        },
+        {
+          "name": ["-e", "--editable"],
+          "description": "Install a project in editable mode",
+          "args": {
+            "name": "path/url"
+          }
+        },
+        {
+          "name": ["-U", "--upgrade"],
+          "description": "Upgrade all specified packages to the newest available version"
+        },
+        {
+          "name": "--no-deps",
+          "description": "Do not install package dependencies"
+        },
+        {
+          "name": "--pre",
+          "description": "Include pre-release and development versions"
+        },
+        {
+          "name": "--user",
+          "description": "Install to the Python user install directory"
+        },
+        {
+          "name": "--force-reinstall",
+          "description": "Reinstall all packages even if they are already up-to-date"
+        },
+        {
+          "name": ["-t", "--target"],
+          "description": "Install packages into target directory",
+          "args": {
+            "name": "dir",
+            "template": "folders"
+          }
+        },
+        {
+          "name": "--no-cache-dir",
+          "description": "Disable the cache"
+        },
+        {
+          "name": ["-i", "--index-url"],
+          "description": "Base URL of the Python Package Index",
+          "args": {
+            "name": "url"
+          }
+        },
+        {
+          "name": "--extra-index-url",
+          "description": "Extra URLs of package indexes",
+          "args": {
+            "name": "url"
+          }
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "uninstall",
+      "description": "Uninstall packages",
+      "options": [
+        {
+          "name": ["-r", "--requirement"],
+          "description": "Uninstall packages listed in the given requirements file",
+          "args": {
+            "name": "file",
+            "template": "filepaths"
+          }
+        },
+        {
+          "name": ["-y", "--yes"],
+          "description": "Do not ask for confirmation of uninstall deletions"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "freeze",
+      "description": "Output installed packages in requirements format",
+      "options": [
+        {
+          "name": ["-r", "--requirement"],
+          "description": "Use the order of a given requirements file",
+          "args": {
+            "name": "file",
+            "template": "filepaths"
+          }
+        },
+        {
+          "name": ["-l", "--local"],
+          "description": "Only output packages installed in the local virtualenv"
+        },
+        {
+          "name": "--user",
+          "description": "Only output packages installed in user-site"
+        },
+        {
+          "name": "--exclude",
+          "description": "Exclude specified package from the output",
+          "args": {
+            "name": "package"
+          }
+        },
+        {
+          "name": "--exclude-editable",
+          "description": "Exclude editable packages from output"
+        }
+      ]
+    },
+    {
+      "name": "list",
+      "description": "List installed packages",
+      "options": [
+        {
+          "name": ["-o", "--outdated"],
+          "description": "List outdated packages"
+        },
+        {
+          "name": ["-u", "--uptodate"],
+          "description": "List uptodate packages"
+        },
+        {
+          "name": ["-e", "--editable"],
+          "description": "List editable projects"
+        },
+        {
+          "name": ["-l", "--local"],
+          "description": "Only output packages installed in the local virtualenv"
+        },
+        {
+          "name": "--user",
+          "description": "Only output packages installed in user-site"
+        },
+        {
+          "name": "--format",
+          "description": "Select the output format",
+          "args": {
+            "name": "format",
+            "suggestions": ["columns", "freeze", "json"]
+          }
+        },
+        {
+          "name": "--not-required",
+          "description": "List packages that are not dependencies of installed packages"
+        }
+      ]
+    },
+    {
+      "name": "show",
+      "description": "Show information about installed packages",
+      "options": [
+        {
+          "name": ["-f", "--files"],
+          "description": "Show the full list of installed files for each package"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "search",
+      "description": "Search PyPI for packages",
+      "args": {
+        "name": "query",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "download",
+      "description": "Download packages",
+      "options": [
+        {
+          "name": ["-d", "--dest"],
+          "description": "Download packages into the specified directory",
+          "args": {
+            "name": "dir",
+            "template": "folders"
+          }
+        },
+        {
+          "name": ["-r", "--requirement"],
+          "description": "Install from the given requirements file",
+          "args": {
+            "name": "file",
+            "template": "filepaths"
+          }
+        },
+        {
+          "name": "--no-deps",
+          "description": "Do not install package dependencies"
+        },
+        {
+          "name": "--no-binary",
+          "description": "Do not use binary packages",
+          "args": {
+            "name": "format_control"
+          }
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "wheel",
+      "description": "Build wheels from your requirements",
+      "options": [
+        {
+          "name": ["-w", "--wheel-dir"],
+          "description": "Build wheels into the specified directory",
+          "args": {
+            "name": "dir",
+            "template": "folders"
+          }
+        },
+        {
+          "name": ["-r", "--requirement"],
+          "description": "Install from the given requirements file",
+          "args": {
+            "name": "file",
+            "template": "filepaths"
+          }
+        },
+        {
+          "name": "--no-deps",
+          "description": "Do not install package dependencies"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "check",
+      "description": "Verify installed packages have compatible dependencies"
+    },
+    {
+      "name": "config",
+      "description": "Manage local and global configuration",
+      "subcommands": [
+        {
+          "name": "list",
+          "description": "List the active configuration"
+        },
+        {
+          "name": "edit",
+          "description": "Edit the configuration file in an editor"
+        },
+        {
+          "name": "get",
+          "description": "Get the value associated with a configuration key",
+          "args": {
+            "name": "key"
+          }
+        },
+        {
+          "name": "set",
+          "description": "Set the value associated with a configuration key",
+          "args": [
+            {
+              "name": "key"
+            },
+            {
+              "name": "value"
+            }
+          ]
+        },
+        {
+          "name": "unset",
+          "description": "Unset the value associated with a configuration key",
+          "args": {
+            "name": "key"
+          }
+        },
+        {
+          "name": "debug",
+          "description": "List the configuration files and values defined under them"
+        }
+      ]
+    },
+    {
+      "name": "cache",
+      "description": "Inspect and manage pip's wheel cache",
+      "subcommands": [
+        {
+          "name": "dir",
+          "description": "Show the cache directory"
+        },
+        {
+          "name": "info",
+          "description": "Show information about the cache"
+        },
+        {
+          "name": "list",
+          "description": "List filenames of packages stored in the cache",
+          "args": {
+            "name": "pattern",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "remove",
+          "description": "Remove one or more packages from the cache",
+          "args": {
+            "name": "pattern"
+          }
+        },
+        {
+          "name": "purge",
+          "description": "Remove all items from the cache"
+        }
+      ]
+    }
+  ]
+}

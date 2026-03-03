@@ -1,0 +1,79 @@
+{
+  "name": "make",
+  "description": "Build automation tool",
+  "options": [
+    {
+      "name": ["-j", "--jobs"],
+      "description": "Allow N jobs at once; infinite jobs with no argument",
+      "args": {
+        "name": "jobs",
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["-f", "--file", "--makefile"],
+      "description": "Read FILE as a makefile",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-C", "--directory"],
+      "description": "Change to DIRECTORY before doing anything",
+      "args": {
+        "name": "directory",
+        "template": "folders"
+      }
+    },
+    {
+      "name": ["-n", "--just-print", "--dry-run", "--recon"],
+      "description": "Print the commands that would be executed, but do not execute them"
+    },
+    {
+      "name": ["-B", "--always-make"],
+      "description": "Unconditionally make all targets"
+    },
+    {
+      "name": ["-k", "--keep-going"],
+      "description": "Keep going when some targets cannot be made"
+    },
+    {
+      "name": ["-s", "--silent", "--quiet"],
+      "description": "Do not echo commands"
+    },
+    {
+      "name": ["-i", "--ignore-errors"],
+      "description": "Ignore errors from commands"
+    },
+    {
+      "name": ["-p", "--print-data-base"],
+      "description": "Print make's internal database"
+    },
+    {
+      "name": ["-q", "--question"],
+      "description": "Run no commands; exit status says if up to date"
+    },
+    {
+      "name": ["-t", "--touch"],
+      "description": "Touch targets instead of remaking them"
+    },
+    {
+      "name": ["-W", "--what-if", "--new-file"],
+      "description": "Consider FILE to be infinitely new",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "--warn-undefined-variables",
+      "description": "Warn when an undefined variable is referenced"
+    }
+  ],
+  "args": {
+    "name": "target",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

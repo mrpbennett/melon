@@ -1,0 +1,1247 @@
+{
+  "name": "git",
+  "description": "The distributed version control system",
+  "options": [
+    {
+      "name": "--version",
+      "description": "Print the git version"
+    },
+    {
+      "name": "--help",
+      "description": "Print help information"
+    },
+    {
+      "name": "-C",
+      "description": "Run as if git was started in the given path",
+      "args": {
+        "name": "path",
+        "template": "folders"
+      }
+    }
+  ],
+  "subcommands": [
+    {
+      "name": "add",
+      "description": "Add file contents to the index",
+      "options": [
+        {
+          "name": ["-A", "--all"],
+          "description": "Add all changes including untracked files"
+        },
+        {
+          "name": ["-p", "--patch"],
+          "description": "Interactively choose hunks to stage"
+        },
+        {
+          "name": ["-n", "--dry-run"],
+          "description": "Show what would be added without actually adding"
+        },
+        {
+          "name": ["-f", "--force"],
+          "description": "Allow adding otherwise ignored files"
+        },
+        {
+          "name": ["-u", "--update"],
+          "description": "Update tracked files only"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Be verbose"
+        }
+      ],
+      "args": {
+        "name": "pathspec",
+        "template": "filepaths",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "bisect",
+      "description": "Use binary search to find the commit that introduced a bug",
+      "subcommands": [
+        {
+          "name": "start",
+          "description": "Start a bisect session"
+        },
+        {
+          "name": "bad",
+          "description": "Mark a commit as bad"
+        },
+        {
+          "name": "good",
+          "description": "Mark a commit as good"
+        },
+        {
+          "name": "reset",
+          "description": "End the bisect session and return to the original branch"
+        },
+        {
+          "name": "skip",
+          "description": "Skip the current commit"
+        },
+        {
+          "name": "log",
+          "description": "Show the bisect log"
+        },
+        {
+          "name": "replay",
+          "description": "Replay a bisect log"
+        }
+      ]
+    },
+    {
+      "name": "branch",
+      "description": "List, create, or delete branches",
+      "options": [
+        {
+          "name": ["-d", "--delete"],
+          "description": "Delete a branch"
+        },
+        {
+          "name": "-D",
+          "description": "Force delete a branch"
+        },
+        {
+          "name": ["-a", "--all"],
+          "description": "List both remote-tracking and local branches"
+        },
+        {
+          "name": ["-r", "--remotes"],
+          "description": "List remote-tracking branches"
+        },
+        {
+          "name": ["-m", "--move"],
+          "description": "Rename a branch"
+        },
+        {
+          "name": ["-c", "--copy"],
+          "description": "Copy a branch"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Show sha1 and commit subject for each branch"
+        },
+        {
+          "name": "--merged",
+          "description": "List branches that have been merged"
+        },
+        {
+          "name": "--no-merged",
+          "description": "List branches that have not been merged"
+        },
+        {
+          "name": "--set-upstream-to",
+          "description": "Set the upstream branch",
+          "args": {
+            "name": "upstream"
+          }
+        }
+      ],
+      "args": {
+        "name": "branch-name",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "checkout",
+      "description": "Switch branches or restore working tree files",
+      "options": [
+        {
+          "name": "-b",
+          "description": "Create and switch to a new branch",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": "-B",
+          "description": "Create or reset and switch to a branch",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": ["-f", "--force"],
+          "description": "Force checkout, discarding local changes"
+        },
+        {
+          "name": "--track",
+          "description": "Set up tracking for the new branch"
+        },
+        {
+          "name": "--orphan",
+          "description": "Create a new orphan branch",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": "-p",
+          "description": "Interactively select hunks to discard"
+        }
+      ],
+      "args": {
+        "name": "branch-or-path",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "clone",
+      "description": "Clone a repository into a new directory",
+      "options": [
+        {
+          "name": "--bare",
+          "description": "Create a bare repository"
+        },
+        {
+          "name": "--depth",
+          "description": "Create a shallow clone with specified depth",
+          "args": {
+            "name": "depth"
+          }
+        },
+        {
+          "name": ["-b", "--branch"],
+          "description": "Checkout a specific branch instead of HEAD",
+          "args": {
+            "name": "branch"
+          }
+        },
+        {
+          "name": "--single-branch",
+          "description": "Clone only the history leading to the tip of a single branch"
+        },
+        {
+          "name": "--recurse-submodules",
+          "description": "Initialize and clone submodules"
+        },
+        {
+          "name": "--shallow-submodules",
+          "description": "Shallow clone submodules"
+        },
+        {
+          "name": ["-o", "--origin"],
+          "description": "Use specified name instead of origin",
+          "args": {
+            "name": "name"
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "repository"
+        },
+        {
+          "name": "directory",
+          "isOptional": true,
+          "template": "folders"
+        }
+      ]
+    },
+    {
+      "name": "commit",
+      "description": "Record changes to the repository",
+      "options": [
+        {
+          "name": ["-m", "--message"],
+          "description": "Use the given message as the commit message",
+          "args": {
+            "name": "message"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": ["-a", "--all"],
+          "description": "Automatically stage modified and deleted files"
+        },
+        {
+          "name": "--amend",
+          "description": "Amend the previous commit"
+        },
+        {
+          "name": "--no-edit",
+          "description": "Use the selected commit message without editing"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Show unified diff of changes in the editor"
+        },
+        {
+          "name": "--fixup",
+          "description": "Construct a commit for use with rebase --autosquash",
+          "args": {
+            "name": "commit"
+          }
+        },
+        {
+          "name": "--squash",
+          "description": "Construct a squash commit for use with rebase --autosquash",
+          "args": {
+            "name": "commit"
+          }
+        },
+        {
+          "name": "-C",
+          "description": "Reuse message from an existing commit",
+          "args": {
+            "name": "commit"
+          }
+        },
+        {
+          "name": ["-s", "--signoff"],
+          "description": "Add Signed-off-by trailer"
+        },
+        {
+          "name": "--allow-empty",
+          "description": "Allow recording an empty commit"
+        },
+        {
+          "name": "--allow-empty-message",
+          "description": "Allow an empty commit message"
+        },
+        {
+          "name": "--no-verify",
+          "description": "Bypass pre-commit and commit-msg hooks"
+        },
+        {
+          "name": "--dry-run",
+          "description": "Show what would be committed without committing"
+        }
+      ],
+      "args": {
+        "name": "pathspec",
+        "template": "filepaths",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "diff",
+      "description": "Show changes between commits, commit and working tree, etc.",
+      "options": [
+        {
+          "name": ["--staged", "--cached"],
+          "description": "Show changes staged for the next commit"
+        },
+        {
+          "name": "--stat",
+          "description": "Show a diffstat instead of a patch"
+        },
+        {
+          "name": "--name-only",
+          "description": "Show only names of changed files"
+        },
+        {
+          "name": "--name-status",
+          "description": "Show names and status of changed files"
+        },
+        {
+          "name": "--no-index",
+          "description": "Compare two paths on the filesystem"
+        },
+        {
+          "name": "--color",
+          "description": "Show colored diff"
+        },
+        {
+          "name": "--no-color",
+          "description": "Disable colored diff"
+        },
+        {
+          "name": "-w",
+          "description": "Ignore all whitespace changes"
+        },
+        {
+          "name": "-b",
+          "description": "Ignore changes in amount of whitespace"
+        },
+        {
+          "name": ["-U", "--unified"],
+          "description": "Generate diffs with specified lines of context",
+          "args": {
+            "name": "n"
+          }
+        }
+      ],
+      "args": {
+        "name": "path",
+        "template": "filepaths",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "fetch",
+      "description": "Download objects and refs from another repository",
+      "options": [
+        {
+          "name": "--all",
+          "description": "Fetch all remotes"
+        },
+        {
+          "name": ["-p", "--prune"],
+          "description": "Remove remote-tracking references that no longer exist on the remote"
+        },
+        {
+          "name": "--tags",
+          "description": "Fetch all tags from the remote"
+        },
+        {
+          "name": "--depth",
+          "description": "Limit fetching to the specified number of commits",
+          "args": {
+            "name": "depth"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Show what would be done without making changes"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Be more verbose"
+        }
+      ],
+      "args": {
+        "name": "remote",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "grep",
+      "description": "Print lines matching a pattern",
+      "options": [
+        {
+          "name": ["-n", "--line-number"],
+          "description": "Prefix the line number to matching lines"
+        },
+        {
+          "name": ["-i", "--ignore-case"],
+          "description": "Ignore case differences"
+        },
+        {
+          "name": ["-c", "--count"],
+          "description": "Show the number of matching lines per file"
+        },
+        {
+          "name": ["-l", "--files-with-matches"],
+          "description": "Show only the names of files with matches"
+        },
+        {
+          "name": ["-E", "--extended-regexp"],
+          "description": "Use extended regular expressions"
+        },
+        {
+          "name": ["-w", "--word-regexp"],
+          "description": "Match the pattern only at word boundaries"
+        }
+      ],
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": "init",
+      "description": "Create an empty Git repository or reinitialize an existing one",
+      "options": [
+        {
+          "name": "--bare",
+          "description": "Create a bare repository"
+        },
+        {
+          "name": ["-b", "--initial-branch"],
+          "description": "Use the specified name for the initial branch",
+          "args": {
+            "name": "branch-name"
+          }
+        },
+        {
+          "name": "--template",
+          "description": "Directory from which templates will be used",
+          "args": {
+            "name": "template-directory",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "directory",
+        "template": "folders",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "log",
+      "description": "Show commit logs",
+      "options": [
+        {
+          "name": "--oneline",
+          "description": "Shorthand for --pretty=oneline --abbrev-commit"
+        },
+        {
+          "name": ["-n", "--max-count"],
+          "description": "Limit the number of commits to output",
+          "args": {
+            "name": "number"
+          }
+        },
+        {
+          "name": "--graph",
+          "description": "Draw a text-based graphical representation"
+        },
+        {
+          "name": "--all",
+          "description": "Show all refs"
+        },
+        {
+          "name": "--stat",
+          "description": "Show diffstat for each commit"
+        },
+        {
+          "name": ["-p", "--patch"],
+          "description": "Generate patch output for each commit"
+        },
+        {
+          "name": "--pretty",
+          "description": "Pretty-print the contents in a given format",
+          "args": {
+            "name": "format",
+            "suggestions": ["oneline", "short", "medium", "full", "fuller", "email", "raw"]
+          }
+        },
+        {
+          "name": "--format",
+          "description": "Pretty-print the contents in a given format",
+          "args": {
+            "name": "format"
+          }
+        },
+        {
+          "name": "--author",
+          "description": "Limit to commits by a given author",
+          "args": {
+            "name": "pattern"
+          }
+        },
+        {
+          "name": "--since",
+          "description": "Show commits more recent than a specific date",
+          "args": {
+            "name": "date"
+          }
+        },
+        {
+          "name": "--until",
+          "description": "Show commits older than a specific date",
+          "args": {
+            "name": "date"
+          }
+        },
+        {
+          "name": "--grep",
+          "description": "Limit to commits with message matching the pattern",
+          "args": {
+            "name": "pattern"
+          }
+        },
+        {
+          "name": "--follow",
+          "description": "Continue listing the history beyond renames"
+        },
+        {
+          "name": "--no-merges",
+          "description": "Do not print commits with more than one parent"
+        },
+        {
+          "name": "--first-parent",
+          "description": "Follow only the first parent commit upon seeing a merge"
+        }
+      ],
+      "args": {
+        "name": "revision-range",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "merge",
+      "description": "Join two or more development histories together",
+      "options": [
+        {
+          "name": "--no-ff",
+          "description": "Create a merge commit even for fast-forward merges"
+        },
+        {
+          "name": "--ff-only",
+          "description": "Refuse to merge unless fast-forward is possible"
+        },
+        {
+          "name": "--squash",
+          "description": "Squash all commits into a single commit"
+        },
+        {
+          "name": "--abort",
+          "description": "Abort the current merge operation"
+        },
+        {
+          "name": "--continue",
+          "description": "Continue the current merge after resolving conflicts"
+        },
+        {
+          "name": ["-m", "--message"],
+          "description": "Set the merge commit message",
+          "args": {
+            "name": "message"
+          }
+        },
+        {
+          "name": "--no-commit",
+          "description": "Perform the merge but do not commit"
+        },
+        {
+          "name": ["-s", "--strategy"],
+          "description": "Use the given merge strategy",
+          "args": {
+            "name": "strategy",
+            "suggestions": ["ort", "recursive", "resolve", "octopus", "ours", "subtree"]
+          }
+        }
+      ],
+      "args": {
+        "name": "branch",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "mv",
+      "description": "Move or rename a file, directory, or symlink",
+      "options": [
+        {
+          "name": ["-f", "--force"],
+          "description": "Force renaming or moving even if the target exists"
+        },
+        {
+          "name": ["-n", "--dry-run"],
+          "description": "Do nothing; only show what would happen"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Report the names of files as they are moved"
+        },
+        {
+          "name": "-k",
+          "description": "Skip actions that would lead to an error"
+        }
+      ],
+      "args": [
+        {
+          "name": "source",
+          "template": "filepaths"
+        },
+        {
+          "name": "destination",
+          "template": "filepaths"
+        }
+      ]
+    },
+    {
+      "name": "pull",
+      "description": "Fetch from and integrate with another repository or a local branch",
+      "options": [
+        {
+          "name": ["-r", "--rebase"],
+          "description": "Rebase the current branch on top of the upstream branch"
+        },
+        {
+          "name": "--no-rebase",
+          "description": "Merge instead of rebasing"
+        },
+        {
+          "name": "--ff-only",
+          "description": "Only fast-forward; fail if not possible"
+        },
+        {
+          "name": "--no-ff",
+          "description": "Create a merge commit even for fast-forward merges"
+        },
+        {
+          "name": "--autostash",
+          "description": "Automatically stash and pop changes before and after"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Be more verbose"
+        },
+        {
+          "name": "--tags",
+          "description": "Fetch all tags from the remote"
+        },
+        {
+          "name": "--prune",
+          "description": "Remove remote-tracking references that no longer exist"
+        }
+      ],
+      "args": [
+        {
+          "name": "remote",
+          "isOptional": true
+        },
+        {
+          "name": "branch",
+          "isOptional": true
+        }
+      ]
+    },
+    {
+      "name": "push",
+      "description": "Update remote refs along with associated objects",
+      "options": [
+        {
+          "name": ["-f", "--force"],
+          "description": "Force push even if the remote has diverged"
+        },
+        {
+          "name": "--force-with-lease",
+          "description": "Force push only if remote ref matches expected value"
+        },
+        {
+          "name": ["-u", "--set-upstream"],
+          "description": "Set upstream for the current branch"
+        },
+        {
+          "name": "--all",
+          "description": "Push all branches"
+        },
+        {
+          "name": "--tags",
+          "description": "Push all tags"
+        },
+        {
+          "name": ["-d", "--delete"],
+          "description": "Delete the remote branch"
+        },
+        {
+          "name": "--dry-run",
+          "description": "Do everything except actually send the updates"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Be more verbose"
+        },
+        {
+          "name": "--no-verify",
+          "description": "Bypass the pre-push hook"
+        }
+      ],
+      "args": [
+        {
+          "name": "remote",
+          "isOptional": true
+        },
+        {
+          "name": "branch",
+          "isOptional": true
+        }
+      ]
+    },
+    {
+      "name": "rebase",
+      "description": "Reapply commits on top of another base tip",
+      "options": [
+        {
+          "name": ["-i", "--interactive"],
+          "description": "Make a list of commits to be rebased and let the user edit"
+        },
+        {
+          "name": "--onto",
+          "description": "Starting point at which to create the new commits",
+          "args": {
+            "name": "newbase"
+          }
+        },
+        {
+          "name": "--abort",
+          "description": "Abort the rebase operation and reset HEAD"
+        },
+        {
+          "name": "--continue",
+          "description": "Continue the rebase after resolving conflicts"
+        },
+        {
+          "name": "--skip",
+          "description": "Skip the current patch and continue"
+        },
+        {
+          "name": "--autosquash",
+          "description": "Automatically move fixup and squash commits"
+        },
+        {
+          "name": "--autostash",
+          "description": "Automatically stash and pop changes"
+        },
+        {
+          "name": ["-s", "--strategy"],
+          "description": "Use the given merge strategy",
+          "args": {
+            "name": "strategy"
+          }
+        }
+      ],
+      "args": {
+        "name": "upstream",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "remote",
+      "description": "Manage set of tracked repositories",
+      "subcommands": [
+        {
+          "name": "add",
+          "description": "Add a new remote",
+          "args": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "url"
+            }
+          ]
+        },
+        {
+          "name": ["remove", "rm"],
+          "description": "Remove a remote",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "rename",
+          "description": "Rename a remote",
+          "args": [
+            {
+              "name": "old"
+            },
+            {
+              "name": "new"
+            }
+          ]
+        },
+        {
+          "name": "show",
+          "description": "Show information about a remote",
+          "args": {
+            "name": "name",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "get-url",
+          "description": "Retrieve the URL for a remote",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "set-url",
+          "description": "Change the URL for a remote",
+          "args": [
+            {
+              "name": "name"
+            },
+            {
+              "name": "newurl"
+            }
+          ]
+        },
+        {
+          "name": "prune",
+          "description": "Remove stale remote-tracking branches",
+          "args": {
+            "name": "name"
+          }
+        }
+      ],
+      "options": [
+        {
+          "name": "-v",
+          "description": "Show remote url after name"
+        }
+      ]
+    },
+    {
+      "name": "reset",
+      "description": "Reset current HEAD to the specified state",
+      "options": [
+        {
+          "name": "--soft",
+          "description": "Only reset HEAD, leave index and working tree unchanged"
+        },
+        {
+          "name": "--mixed",
+          "description": "Reset HEAD and index, leave working tree unchanged"
+        },
+        {
+          "name": "--hard",
+          "description": "Reset HEAD, index, and working tree"
+        },
+        {
+          "name": ["-p", "--patch"],
+          "description": "Interactively select hunks to unstage"
+        }
+      ],
+      "args": {
+        "name": "commit-or-path",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "restore",
+      "description": "Restore working tree files",
+      "options": [
+        {
+          "name": ["-s", "--source"],
+          "description": "Restore from the given tree",
+          "args": {
+            "name": "tree"
+          }
+        },
+        {
+          "name": ["-S", "--staged"],
+          "description": "Restore the index (unstage)"
+        },
+        {
+          "name": ["-W", "--worktree"],
+          "description": "Restore the working tree (default)"
+        },
+        {
+          "name": ["-p", "--patch"],
+          "description": "Interactively select hunks to restore"
+        }
+      ],
+      "args": {
+        "name": "pathspec",
+        "template": "filepaths",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "rm",
+      "description": "Remove files from the working tree and from the index",
+      "options": [
+        {
+          "name": ["-f", "--force"],
+          "description": "Override the up-to-date check"
+        },
+        {
+          "name": "-r",
+          "description": "Allow recursive removal"
+        },
+        {
+          "name": "--cached",
+          "description": "Only remove from the index, keep the file in the working tree"
+        },
+        {
+          "name": ["-n", "--dry-run"],
+          "description": "Do not actually remove any file(s)"
+        }
+      ],
+      "args": {
+        "name": "file",
+        "template": "filepaths",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "show",
+      "description": "Show various types of objects",
+      "options": [
+        {
+          "name": "--stat",
+          "description": "Show diffstat"
+        },
+        {
+          "name": "--name-only",
+          "description": "Show only names of changed files"
+        },
+        {
+          "name": "--name-status",
+          "description": "Show names and status of changed files"
+        },
+        {
+          "name": "--pretty",
+          "description": "Pretty-print the contents in a given format",
+          "args": {
+            "name": "format",
+            "suggestions": ["oneline", "short", "medium", "full", "fuller", "email", "raw"]
+          }
+        },
+        {
+          "name": "--format",
+          "description": "Pretty-print the contents in a given format",
+          "args": {
+            "name": "format"
+          }
+        }
+      ],
+      "args": {
+        "name": "object",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "stash",
+      "description": "Stash the changes in a dirty working directory",
+      "subcommands": [
+        {
+          "name": "push",
+          "description": "Save local modifications to a new stash entry",
+          "options": [
+            {
+              "name": ["-m", "--message"],
+              "description": "Stash message",
+              "args": {
+                "name": "message"
+              }
+            },
+            {
+              "name": ["-u", "--include-untracked"],
+              "description": "Include untracked files"
+            },
+            {
+              "name": ["-k", "--keep-index"],
+              "description": "Keep staged changes in the index"
+            },
+            {
+              "name": ["-p", "--patch"],
+              "description": "Interactively select hunks to stash"
+            }
+          ],
+          "args": {
+            "name": "pathspec",
+            "template": "filepaths",
+            "isVariadic": true,
+            "isOptional": true
+          }
+        },
+        {
+          "name": "pop",
+          "description": "Remove a single stashed state and apply it on top of the current working tree",
+          "options": [
+            {
+              "name": "--index",
+              "description": "Try to reinstate the index changes as well"
+            }
+          ],
+          "args": {
+            "name": "stash",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "list",
+          "description": "List the stash entries that you currently have"
+        },
+        {
+          "name": "apply",
+          "description": "Like pop, but do not remove the state from the stash list",
+          "options": [
+            {
+              "name": "--index",
+              "description": "Try to reinstate the index changes as well"
+            }
+          ],
+          "args": {
+            "name": "stash",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "drop",
+          "description": "Remove a single stashed state from the stash list",
+          "args": {
+            "name": "stash",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "show",
+          "description": "Show the changes recorded in the stash entry",
+          "options": [
+            {
+              "name": ["-p", "--patch"],
+              "description": "Show the stash entry in patch form"
+            }
+          ],
+          "args": {
+            "name": "stash",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "clear",
+          "description": "Remove all stash entries"
+        },
+        {
+          "name": "branch",
+          "description": "Create and check out a new branch starting from the commit at which the stash was created",
+          "args": [
+            {
+              "name": "branchname"
+            },
+            {
+              "name": "stash",
+              "isOptional": true
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "status",
+      "description": "Show the working tree status",
+      "options": [
+        {
+          "name": ["-s", "--short"],
+          "description": "Give output in the short format"
+        },
+        {
+          "name": ["-b", "--branch"],
+          "description": "Show the branch and tracking info"
+        },
+        {
+          "name": "--porcelain",
+          "description": "Machine-readable output format"
+        },
+        {
+          "name": ["-u", "--untracked-files"],
+          "description": "Show untracked files",
+          "args": {
+            "name": "mode",
+            "suggestions": ["no", "normal", "all"],
+            "isOptional": true
+          }
+        },
+        {
+          "name": "--ignored",
+          "description": "Show ignored files"
+        },
+        {
+          "name": ["-v", "--verbose"],
+          "description": "Show textual changes staged for commit"
+        }
+      ],
+      "args": {
+        "name": "pathspec",
+        "template": "filepaths",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "switch",
+      "description": "Switch branches",
+      "options": [
+        {
+          "name": ["-c", "--create"],
+          "description": "Create a new branch and switch to it",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": ["-C", "--force-create"],
+          "description": "Create or reset a branch and switch to it",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": ["-d", "--detach"],
+          "description": "Switch to a commit for inspection and experiments"
+        },
+        {
+          "name": ["-f", "--force"],
+          "description": "Force switch even if there are local changes"
+        },
+        {
+          "name": "--orphan",
+          "description": "Create a new orphan branch",
+          "args": {
+            "name": "new-branch"
+          }
+        },
+        {
+          "name": "--track",
+          "description": "Set up tracking for the branch"
+        },
+        {
+          "name": "--no-track",
+          "description": "Do not set up tracking"
+        }
+      ],
+      "args": {
+        "name": "branch",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "tag",
+      "description": "Create, list, delete or verify a tag object",
+      "options": [
+        {
+          "name": ["-a", "--annotate"],
+          "description": "Make an annotated tag"
+        },
+        {
+          "name": ["-d", "--delete"],
+          "description": "Delete existing tags"
+        },
+        {
+          "name": ["-f", "--force"],
+          "description": "Replace an existing tag"
+        },
+        {
+          "name": ["-l", "--list"],
+          "description": "List tags matching a pattern",
+          "args": {
+            "name": "pattern",
+            "isOptional": true
+          }
+        },
+        {
+          "name": ["-m", "--message"],
+          "description": "Use the given tag message",
+          "args": {
+            "name": "message"
+          }
+        },
+        {
+          "name": ["-n", "--num"],
+          "description": "Print lines of each tag message",
+          "args": {
+            "name": "num"
+          }
+        },
+        {
+          "name": ["-s", "--sign"],
+          "description": "Make a GPG-signed tag"
+        },
+        {
+          "name": ["-v", "--verify"],
+          "description": "Verify the GPG signature of tags"
+        }
+      ],
+      "args": [
+        {
+          "name": "tagname",
+          "isOptional": true
+        },
+        {
+          "name": "commit",
+          "isOptional": true
+        }
+      ]
+    }
+  ]
+}

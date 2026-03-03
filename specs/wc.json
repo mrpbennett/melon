@@ -1,0 +1,32 @@
+{
+  "name": "wc",
+  "description": "Print newline, word, and byte counts for each file",
+  "options": [
+    {
+      "name": ["-l", "--lines"],
+      "description": "Print the newline counts"
+    },
+    {
+      "name": ["-w", "--words"],
+      "description": "Print the word counts"
+    },
+    {
+      "name": ["-c", "--bytes"],
+      "description": "Print the byte counts"
+    },
+    {
+      "name": ["-m", "--chars"],
+      "description": "Print the character counts"
+    },
+    {
+      "name": ["-L", "--max-line-length"],
+      "description": "Print the maximum display width"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

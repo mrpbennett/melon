@@ -1,0 +1,132 @@
+{
+  "name": "wget",
+  "description": "Non-interactive network downloader",
+  "options": [
+    {
+      "name": ["-O", "--output-document"],
+      "description": "Write documents to the specified file",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-q", "--quiet"],
+      "description": "Turn off output"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Turn on verbose output (default)"
+    },
+    {
+      "name": ["-c", "--continue"],
+      "description": "Continue getting a partially downloaded file"
+    },
+    {
+      "name": ["-r", "--recursive"],
+      "description": "Turn on recursive retrieving"
+    },
+    {
+      "name": "--no-clobber",
+      "description": "Do not overwrite existing files"
+    },
+    {
+      "name": "--user-agent",
+      "description": "Identify as the specified agent to the HTTP server",
+      "args": {
+        "name": "agent-string"
+      }
+    },
+    {
+      "name": ["-P", "--directory-prefix"],
+      "description": "Set directory prefix to specified value",
+      "args": {
+        "name": "prefix",
+        "template": "folders"
+      }
+    },
+    {
+      "name": ["-i", "--input-file"],
+      "description": "Read URLs from a local or external file",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-N", "--timestamping"],
+      "description": "Only retrieve files newer than local copies"
+    },
+    {
+      "name": "--no-check-certificate",
+      "description": "Do not check the server certificate"
+    },
+    {
+      "name": ["-t", "--tries"],
+      "description": "Set number of retries to the specified number",
+      "args": {
+        "name": "number"
+      }
+    },
+    {
+      "name": "--timeout",
+      "description": "Set all timeout values to the specified number of seconds",
+      "args": {
+        "name": "seconds"
+      }
+    },
+    {
+      "name": ["-l", "--level"],
+      "description": "Specify recursion maximum depth level",
+      "args": {
+        "name": "depth"
+      }
+    },
+    {
+      "name": "--header",
+      "description": "Send a custom HTTP header",
+      "args": {
+        "name": "header-line"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": "--limit-rate",
+      "description": "Limit the download speed to the specified rate",
+      "args": {
+        "name": "rate"
+      }
+    },
+    {
+      "name": "--mirror",
+      "description": "Turn on options suitable for mirroring (shortcut for -N -r -l inf --no-remove-listing)"
+    },
+    {
+      "name": "--no-parent",
+      "description": "Do not ascend to the parent directory when retrieving recursively"
+    },
+    {
+      "name": "--reject",
+      "description": "Comma-separated list of file name suffixes or patterns to reject",
+      "args": {
+        "name": "list"
+      }
+    },
+    {
+      "name": "--accept",
+      "description": "Comma-separated list of file name suffixes or patterns to accept",
+      "args": {
+        "name": "list"
+      }
+    },
+    {
+      "name": ["-nv", "--no-verbose"],
+      "description": "Turn off verbose without being completely quiet"
+    }
+  ],
+  "args": {
+    "name": "url",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

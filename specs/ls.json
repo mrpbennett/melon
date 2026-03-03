@@ -1,0 +1,81 @@
+{
+  "name": "ls",
+  "description": "List directory contents",
+  "options": [
+    {
+      "name": ["-l", "--long"],
+      "description": "Use a long listing format"
+    },
+    {
+      "name": ["-a", "--all"],
+      "description": "Include directory entries whose names begin with a dot"
+    },
+    {
+      "name": "-la",
+      "description": "Long listing format including hidden files"
+    },
+    {
+      "name": "-lh",
+      "description": "Long listing format with human-readable sizes"
+    },
+    {
+      "name": ["-R", "--recursive"],
+      "description": "List subdirectories recursively"
+    },
+    {
+      "name": ["-h", "--human-readable"],
+      "description": "Print sizes in human readable format (e.g., 1K, 234M)"
+    },
+    {
+      "name": "--color",
+      "description": "Colorize the output",
+      "args": {
+        "name": "when",
+        "suggestions": ["always", "auto", "never"],
+        "isOptional": true
+      }
+    },
+    {
+      "name": "-1",
+      "description": "List one file per line"
+    },
+    {
+      "name": ["-t"],
+      "description": "Sort by modification time, newest first"
+    },
+    {
+      "name": ["-S"],
+      "description": "Sort by file size, largest first"
+    },
+    {
+      "name": ["-r", "--reverse"],
+      "description": "Reverse order while sorting"
+    },
+    {
+      "name": ["-d", "--directory"],
+      "description": "List directories themselves, not their contents"
+    },
+    {
+      "name": ["-F", "--classify"],
+      "description": "Append indicator (one of */=>@|) to entries"
+    },
+    {
+      "name": ["-i", "--inode"],
+      "description": "Print the index number of each file"
+    },
+    {
+      "name": ["-s", "--size"],
+      "description": "Print the allocated size of each file in blocks"
+    },
+    {
+      "name": ["-G"],
+      "description": "Enable colorized output (macOS/BSD)"
+    }
+  ],
+  "args": {
+    "name": "path",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

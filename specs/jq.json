@@ -1,0 +1,128 @@
+{
+  "name": "jq",
+  "description": "Command-line JSON processor",
+  "options": [
+    {
+      "name": ["-r", "--raw-output"],
+      "description": "Output raw strings, not JSON-encoded"
+    },
+    {
+      "name": ["-c", "--compact-output"],
+      "description": "Compact instead of pretty-printed output"
+    },
+    {
+      "name": ["-e", "--exit-status"],
+      "description": "Set exit status code based on the output"
+    },
+    {
+      "name": ["-s", "--slurp"],
+      "description": "Read entire input stream into a large array and run the filter once"
+    },
+    {
+      "name": ["-S", "--sort-keys"],
+      "description": "Output the fields of each object with the keys in sorted order"
+    },
+    {
+      "name": "--tab",
+      "description": "Use tabs for indentation"
+    },
+    {
+      "name": "--indent",
+      "description": "Use the given number of spaces for indentation",
+      "args": {
+        "name": "n"
+      }
+    },
+    {
+      "name": "--arg",
+      "description": "Set variable $name to string value",
+      "args": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "value"
+        }
+      ],
+      "isRepeatable": true
+    },
+    {
+      "name": "--argjson",
+      "description": "Set variable $name to JSON value",
+      "args": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "value"
+        }
+      ],
+      "isRepeatable": true
+    },
+    {
+      "name": "--slurpfile",
+      "description": "Set variable $name to an array of JSON values read from the file",
+      "args": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "file",
+          "template": "filepaths"
+        }
+      ]
+    },
+    {
+      "name": "--rawfile",
+      "description": "Set variable $name to a string consisting of the contents of the file",
+      "args": [
+        {
+          "name": "name"
+        },
+        {
+          "name": "file",
+          "template": "filepaths"
+        }
+      ]
+    },
+    {
+      "name": ["-n", "--null-input"],
+      "description": "Do not read any input, use null as the single input value"
+    },
+    {
+      "name": ["-R", "--raw-input"],
+      "description": "Parse each line of input as a string instead of JSON"
+    },
+    {
+      "name": ["-j", "--join-output"],
+      "description": "Like -r but do not print a newline after each output"
+    },
+    {
+      "name": "-f",
+      "description": "Read filter from the specified file",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "--jsonargs",
+      "description": "Remaining arguments are JSON values used as positional arguments"
+    },
+    {
+      "name": "--args",
+      "description": "Remaining arguments are string values used as positional arguments"
+    }
+  ],
+  "args": [
+    {
+      "name": "filter"
+    },
+    {
+      "name": "file",
+      "template": "filepaths",
+      "isVariadic": true,
+      "isOptional": true
+    }
+  ]
+}

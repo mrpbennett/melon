@@ -1,0 +1,165 @@
+{
+  "name": "find",
+  "description": "Search for files in a directory hierarchy",
+  "options": [
+    {
+      "name": "-name",
+      "description": "Match files by name (case-sensitive glob pattern)",
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": "-iname",
+      "description": "Match files by name (case-insensitive glob pattern)",
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": "-type",
+      "description": "Match by file type",
+      "args": {
+        "name": "type",
+        "suggestions": ["f", "d", "l", "b", "c", "p", "s"]
+      }
+    },
+    {
+      "name": "-exec",
+      "description": "Execute a command on each matched file",
+      "args": {
+        "name": "command",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "-print",
+      "description": "Print the full file name followed by a newline"
+    },
+    {
+      "name": "-print0",
+      "description": "Print the full file name followed by a null character"
+    },
+    {
+      "name": "-delete",
+      "description": "Delete matched files"
+    },
+    {
+      "name": "-maxdepth",
+      "description": "Descend at most N levels of directories",
+      "args": {
+        "name": "levels"
+      }
+    },
+    {
+      "name": "-mindepth",
+      "description": "Do not apply tests or actions at levels less than N",
+      "args": {
+        "name": "levels"
+      }
+    },
+    {
+      "name": "-mtime",
+      "description": "File was modified N*24 hours ago",
+      "args": {
+        "name": "n"
+      }
+    },
+    {
+      "name": "-mmin",
+      "description": "File was modified N minutes ago",
+      "args": {
+        "name": "n"
+      }
+    },
+    {
+      "name": "-size",
+      "description": "File uses N units of space",
+      "args": {
+        "name": "n",
+        "suggestions": ["+100M", "+1G", "-1k", "+10k"]
+      }
+    },
+    {
+      "name": "-path",
+      "description": "Match against the full path (case-sensitive glob)",
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": "-regex",
+      "description": "Match the full path against a regular expression",
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": "-perm",
+      "description": "Match by file permissions",
+      "args": {
+        "name": "mode"
+      }
+    },
+    {
+      "name": "-user",
+      "description": "Match by file owner",
+      "args": {
+        "name": "username"
+      }
+    },
+    {
+      "name": "-group",
+      "description": "Match by file group",
+      "args": {
+        "name": "groupname"
+      }
+    },
+    {
+      "name": "-empty",
+      "description": "Match empty files and directories"
+    },
+    {
+      "name": "-newer",
+      "description": "Match files modified more recently than the given file",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "-not",
+      "description": "Negate the following test"
+    },
+    {
+      "name": "-or",
+      "description": "Logical OR between tests"
+    },
+    {
+      "name": "-and",
+      "description": "Logical AND between tests"
+    },
+    {
+      "name": "-prune",
+      "description": "Do not descend into the current directory"
+    },
+    {
+      "name": "-ls",
+      "description": "List current file in ls -dils format"
+    },
+    {
+      "name": "-execdir",
+      "description": "Like -exec but the command is run from the subdirectory containing the matched file",
+      "args": {
+        "name": "command",
+        "isVariadic": true
+      }
+    }
+  ],
+  "args": {
+    "name": "path",
+    "template": "folders",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

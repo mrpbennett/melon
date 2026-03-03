@@ -1,0 +1,62 @@
+{
+  "name": "awk",
+  "description": "Pattern scanning and text processing language",
+  "options": [
+    {
+      "name": ["-F", "--field-separator"],
+      "description": "Set the field separator",
+      "args": {
+        "name": "separator"
+      }
+    },
+    {
+      "name": ["-f", "--file"],
+      "description": "Read the AWK program source from the specified file",
+      "args": {
+        "name": "program-file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-v", "--assign"],
+      "description": "Assign a value to a variable before execution",
+      "args": {
+        "name": "var=value"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": "-b",
+      "description": "Use characters as bytes"
+    },
+    {
+      "name": "-d",
+      "description": "Dump variables to a file",
+      "args": {
+        "name": "file",
+        "template": "filepaths",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "-o",
+      "description": "Enable pretty-printing of awk programs",
+      "args": {
+        "name": "file",
+        "template": "filepaths",
+        "isOptional": true
+      }
+    }
+  ],
+  "args": [
+    {
+      "name": "program"
+    },
+    {
+      "name": "file",
+      "template": "filepaths",
+      "isVariadic": true,
+      "isOptional": true
+    }
+  ]
+}

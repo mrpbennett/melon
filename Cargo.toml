@@ -1,0 +1,29 @@
+[package]
+name = "melon"
+version = "0.1.0"
+edition = "2021"
+description = "Warp-style autocomplete engine for any terminal"
+
+[dependencies]
+portable-pty = "0.8"
+crossterm = "0.28"
+nucleo-matcher = "0.3"
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+clap = { version = "4", features = ["derive"] }
+dirs = "5"
+toml = "0.8"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+nix = { version = "0.29", features = ["signal", "term", "ioctl"] }
+libc = "0.2"
+signal-hook = "0.3"
+signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
+include_dir = "0.7"
+unicode-width = "0.2"
+tokio-stream = "0.1.18"
+
+[dev-dependencies]
+tempfile = "3"

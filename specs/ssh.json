@@ -1,0 +1,138 @@
+{
+  "name": "ssh",
+  "description": "OpenSSH remote login client",
+  "options": [
+    {
+      "name": "-p",
+      "description": "Port to connect to on the remote host",
+      "args": {
+        "name": "port"
+      }
+    },
+    {
+      "name": "-i",
+      "description": "Select a file from which the identity (private key) is read",
+      "args": {
+        "name": "identity_file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "-l",
+      "description": "Specify the user to log in as on the remote machine",
+      "args": {
+        "name": "login_name"
+      }
+    },
+    {
+      "name": "-L",
+      "description": "Forward connections from a local port to a remote address",
+      "args": {
+        "name": "bind_address:port:host:hostport"
+      }
+    },
+    {
+      "name": "-R",
+      "description": "Forward connections from a remote port to a local address",
+      "args": {
+        "name": "bind_address:port:host:hostport"
+      }
+    },
+    {
+      "name": "-D",
+      "description": "Specify a local dynamic application-level port forwarding (SOCKS proxy)",
+      "args": {
+        "name": "bind_address:port"
+      }
+    },
+    {
+      "name": "-N",
+      "description": "Do not execute a remote command (useful for port forwarding only)"
+    },
+    {
+      "name": "-f",
+      "description": "Go to background just before command execution"
+    },
+    {
+      "name": "-v",
+      "description": "Verbose mode, print debugging messages",
+      "isRepeatable": true
+    },
+    {
+      "name": "-o",
+      "description": "Specify an option in the format used in the configuration file",
+      "args": {
+        "name": "option"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": "-A",
+      "description": "Enable forwarding of the authentication agent connection"
+    },
+    {
+      "name": "-C",
+      "description": "Request compression of all data"
+    },
+    {
+      "name": "-X",
+      "description": "Enable X11 forwarding"
+    },
+    {
+      "name": "-Y",
+      "description": "Enable trusted X11 forwarding"
+    },
+    {
+      "name": "-t",
+      "description": "Force pseudo-terminal allocation"
+    },
+    {
+      "name": "-T",
+      "description": "Disable pseudo-terminal allocation"
+    },
+    {
+      "name": "-q",
+      "description": "Quiet mode, suppress most warning and diagnostic messages"
+    },
+    {
+      "name": "-J",
+      "description": "Connect to the target host via a jump host (ProxyJump)",
+      "args": {
+        "name": "destination"
+      }
+    },
+    {
+      "name": "-W",
+      "description": "Forward standard input and output to a host and port via the secure channel",
+      "args": {
+        "name": "host:port"
+      }
+    },
+    {
+      "name": "-F",
+      "description": "Specify an alternative per-user configuration file",
+      "args": {
+        "name": "configfile",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "-4",
+      "description": "Force use of IPv4 addresses only"
+    },
+    {
+      "name": "-6",
+      "description": "Force use of IPv6 addresses only"
+    }
+  ],
+  "args": [
+    {
+      "name": "destination"
+    },
+    {
+      "name": "command",
+      "isOptional": true,
+      "isVariadic": true
+    }
+  ]
+}

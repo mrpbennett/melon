@@ -1,0 +1,94 @@
+{
+  "name": "tar",
+  "description": "Manipulate tape archives",
+  "options": [
+    {
+      "name": ["-x", "--extract", "--get"],
+      "description": "Extract files from an archive"
+    },
+    {
+      "name": ["-c", "--create"],
+      "description": "Create a new archive"
+    },
+    {
+      "name": ["-z", "--gzip", "--gunzip"],
+      "description": "Filter the archive through gzip"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Verbosely list files processed"
+    },
+    {
+      "name": ["-f", "--file"],
+      "description": "Use archive file or device",
+      "args": {
+        "name": "archive",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-j", "--bzip2"],
+      "description": "Filter the archive through bzip2"
+    },
+    {
+      "name": ["-J", "--xz"],
+      "description": "Filter the archive through xz"
+    },
+    {
+      "name": ["-t", "--list"],
+      "description": "List the contents of an archive"
+    },
+    {
+      "name": ["-C", "--directory"],
+      "description": "Change to directory before performing any operations",
+      "args": {
+        "name": "directory",
+        "template": "folders"
+      }
+    },
+    {
+      "name": ["-r", "--append"],
+      "description": "Append files to the end of an archive"
+    },
+    {
+      "name": ["-u", "--update"],
+      "description": "Only append files newer than the copy in the archive"
+    },
+    {
+      "name": "--exclude",
+      "description": "Exclude files matching the pattern",
+      "args": {
+        "name": "pattern"
+      }
+    },
+    {
+      "name": ["-p", "--preserve-permissions"],
+      "description": "Extract information about file permissions"
+    },
+    {
+      "name": ["-k", "--keep-old-files"],
+      "description": "Do not replace existing files when extracting"
+    },
+    {
+      "name": "--strip-components",
+      "description": "Strip the given number of leading components from file names",
+      "args": {
+        "name": "number"
+      }
+    },
+    {
+      "name": ["-a", "--auto-compress"],
+      "description": "Use archive suffix to determine the compression program"
+    },
+    {
+      "name": ["-Z", "--compress"],
+      "description": "Filter the archive through compress"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

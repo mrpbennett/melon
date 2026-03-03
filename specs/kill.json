@@ -1,0 +1,66 @@
+{
+  "name": "kill",
+  "description": "Send a signal to a process",
+  "options": [
+    {
+      "name": "-9",
+      "description": "Send SIGKILL signal (force kill)"
+    },
+    {
+      "name": "-15",
+      "description": "Send SIGTERM signal (graceful termination)"
+    },
+    {
+      "name": "-SIGTERM",
+      "description": "Send SIGTERM signal (graceful termination)"
+    },
+    {
+      "name": "-SIGKILL",
+      "description": "Send SIGKILL signal (force kill)"
+    },
+    {
+      "name": "-SIGHUP",
+      "description": "Send SIGHUP signal (hangup)"
+    },
+    {
+      "name": "-SIGINT",
+      "description": "Send SIGINT signal (interrupt)"
+    },
+    {
+      "name": "-SIGQUIT",
+      "description": "Send SIGQUIT signal (quit)"
+    },
+    {
+      "name": "-SIGSTOP",
+      "description": "Send SIGSTOP signal (stop process)"
+    },
+    {
+      "name": "-SIGCONT",
+      "description": "Send SIGCONT signal (continue stopped process)"
+    },
+    {
+      "name": "-SIGUSR1",
+      "description": "Send SIGUSR1 signal (user-defined signal 1)"
+    },
+    {
+      "name": "-SIGUSR2",
+      "description": "Send SIGUSR2 signal (user-defined signal 2)"
+    },
+    {
+      "name": ["-l", "--list"],
+      "description": "List all signal names or convert a signal number to a name"
+    },
+    {
+      "name": ["-s", "--signal"],
+      "description": "Specify the signal to send",
+      "args": {
+        "name": "signal",
+        "suggestions": ["SIGHUP", "SIGINT", "SIGQUIT", "SIGKILL", "SIGTERM", "SIGSTOP", "SIGCONT", "SIGUSR1", "SIGUSR2"]
+      }
+    }
+  ],
+  "args": {
+    "name": "pid",
+    "isVariadic": true
+  }
+}

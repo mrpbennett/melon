@@ -1,0 +1,89 @@
+{
+  "name": ["python3", "python"],
+  "description": "Python language interpreter",
+  "options": [
+    {
+      "name": "-c",
+      "description": "Execute the Python code in command",
+      "args": {
+        "name": "command"
+      }
+    },
+    {
+      "name": "-m",
+      "description": "Run library module as a script",
+      "args": {
+        "name": "module"
+      }
+    },
+    {
+      "name": "-u",
+      "description": "Force unbuffered stdout and stderr streams"
+    },
+    {
+      "name": "-i",
+      "description": "Inspect interactively after running script"
+    },
+    {
+      "name": "-v",
+      "description": "Verbose mode, trace import statements"
+    },
+    {
+      "name": ["-V", "--version"],
+      "description": "Print the Python version number and exit"
+    },
+    {
+      "name": ["-h", "--help"],
+      "description": "Print usage message and exit"
+    },
+    {
+      "name": "-W",
+      "description": "Warning control",
+      "args": {
+        "name": "action",
+        "suggestions": ["default", "error", "ignore", "always", "module", "once"]
+      }
+    },
+    {
+      "name": "-B",
+      "description": "Do not write .pyc files on import"
+    },
+    {
+      "name": "-O",
+      "description": "Remove assert and __debug__-dependent statements"
+    },
+    {
+      "name": "-OO",
+      "description": "Remove assert statements, __debug__-dependent statements, and docstrings"
+    },
+    {
+      "name": "-E",
+      "description": "Ignore PYTHON* environment variables"
+    },
+    {
+      "name": "-s",
+      "description": "Do not add user site-packages directory to sys.path"
+    },
+    {
+      "name": "-S",
+      "description": "Do not imply 'import site' on initialization"
+    },
+    {
+      "name": "-X",
+      "description": "Set implementation-specific option",
+      "args": {
+        "name": "option"
+      }
+    },
+    {
+      "name": "-q",
+      "description": "Do not print version and copyright messages on interactive startup"
+    }
+  ],
+  "args": {
+    "name": "script",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

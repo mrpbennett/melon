@@ -1,0 +1,56 @@
+{
+  "name": "sed",
+  "description": "Stream editor for filtering and transforming text",
+  "options": [
+    {
+      "name": ["-i", "--in-place"],
+      "description": "Edit files in place",
+      "args": {
+        "name": "suffix",
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["-e", "--expression"],
+      "description": "Add the script to the commands to be executed",
+      "args": {
+        "name": "script"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": ["-n", "--quiet", "--silent"],
+      "description": "Suppress automatic printing of pattern space"
+    },
+    {
+      "name": ["-f", "--file"],
+      "description": "Add the contents of script-file to the commands to be executed",
+      "args": {
+        "name": "script-file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-E", "-r", "--regexp-extended"],
+      "description": "Use extended regular expressions"
+    },
+    {
+      "name": ["-l", "--line-length"],
+      "description": "Specify the desired line-wrap length",
+      "args": {
+        "name": "length"
+      }
+    }
+  ],
+  "args": [
+    {
+      "name": "expression"
+    },
+    {
+      "name": "file",
+      "template": "filepaths",
+      "isVariadic": true,
+      "isOptional": true
+    }
+  ]
+}

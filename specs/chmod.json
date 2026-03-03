@@ -1,0 +1,41 @@
+{
+  "name": "chmod",
+  "description": "Change file mode bits",
+  "options": [
+    {
+      "name": ["-R", "--recursive"],
+      "description": "Change files and directories recursively"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Output a diagnostic for every file processed"
+    },
+    {
+      "name": ["-c", "--changes"],
+      "description": "Report only when a change is made"
+    },
+    {
+      "name": ["-f", "--silent", "--quiet"],
+      "description": "Suppress most error messages"
+    },
+    {
+      "name": "--reference",
+      "description": "Use the mode of a reference file instead of a mode value",
+      "args": {
+        "name": "rfile",
+        "template": "filepaths"
+      }
+    }
+  ],
+  "args": [
+    {
+      "name": "mode",
+      "suggestions": ["644", "755", "600", "700", "777", "444", "u+x", "a+x", "g+w", "o-w", "u+rw", "a+r"]
+    },
+    {
+      "name": "file",
+      "template": "filepaths",
+      "isVariadic": true
+    }
+  ]
+}

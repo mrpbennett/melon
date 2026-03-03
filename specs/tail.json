@@ -1,0 +1,60 @@
+{
+  "name": "tail",
+  "description": "Output the last part of files",
+  "options": [
+    {
+      "name": ["-n", "--lines"],
+      "description": "Output the last N lines instead of the last 10",
+      "args": {
+        "name": "count"
+      }
+    },
+    {
+      "name": ["-f", "--follow"],
+      "description": "Output appended data as the file grows"
+    },
+    {
+      "name": ["-c", "--bytes"],
+      "description": "Output the last N bytes",
+      "args": {
+        "name": "count"
+      }
+    },
+    {
+      "name": ["-F"],
+      "description": "Same as --follow=name --retry"
+    },
+    {
+      "name": ["-q", "--quiet", "--silent"],
+      "description": "Never output headers giving file names"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Always output headers giving file names"
+    },
+    {
+      "name": "--pid",
+      "description": "With -f, terminate after process ID dies",
+      "args": {
+        "name": "pid"
+      }
+    },
+    {
+      "name": ["-s", "--sleep-interval"],
+      "description": "With -f, sleep for approximately N seconds between iterations",
+      "args": {
+        "name": "seconds"
+      }
+    },
+    {
+      "name": "--retry",
+      "description": "Keep trying to open a file if it is inaccessible"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

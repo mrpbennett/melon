@@ -1,0 +1,18 @@
+{
+  "name": "which",
+  "description": "Locate a command",
+  "options": [
+    {
+      "name": "-a",
+      "description": "List all instances of executables found, not just the first one"
+    },
+    {
+      "name": "-s",
+      "description": "No output, just return 0 if all commands are found"
+    }
+  ],
+  "args": {
+    "name": "command",
+    "isVariadic": true
+  }
+}

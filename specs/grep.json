@@ -1,0 +1,135 @@
+{
+  "name": "grep",
+  "description": "Print lines that match patterns",
+  "options": [
+    {
+      "name": ["-r", "-R", "--recursive"],
+      "description": "Recursively search subdirectories"
+    },
+    {
+      "name": ["-i", "--ignore-case"],
+      "description": "Ignore case distinctions in patterns and input data"
+    },
+    {
+      "name": ["-n", "--line-number"],
+      "description": "Prefix each line of output with the line number within its input file"
+    },
+    {
+      "name": ["-l", "--files-with-matches"],
+      "description": "Print only the names of files containing matches"
+    },
+    {
+      "name": ["-c", "--count"],
+      "description": "Print a count of matching lines for each input file"
+    },
+    {
+      "name": ["-v", "--invert-match"],
+      "description": "Invert the sense of matching, selecting non-matching lines"
+    },
+    {
+      "name": ["-E", "--extended-regexp"],
+      "description": "Interpret patterns as extended regular expressions"
+    },
+    {
+      "name": ["-w", "--word-regexp"],
+      "description": "Select only lines containing matches that form whole words"
+    },
+    {
+      "name": "--include",
+      "description": "Search only files that match the given filename glob pattern",
+      "args": {
+        "name": "glob"
+      }
+    },
+    {
+      "name": "--exclude",
+      "description": "Skip files that match the given filename glob pattern",
+      "args": {
+        "name": "glob"
+      }
+    },
+    {
+      "name": "--exclude-dir",
+      "description": "Skip directories matching the given pattern",
+      "args": {
+        "name": "dir"
+      }
+    },
+    {
+      "name": "--color",
+      "description": "Surround matching strings with color markers",
+      "args": {
+        "name": "when",
+        "suggestions": ["always", "auto", "never"],
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["-o", "--only-matching"],
+      "description": "Print only the matched parts of a matching line"
+    },
+    {
+      "name": ["-q", "--quiet", "--silent"],
+      "description": "Do not write anything to standard output, exit with zero status if a match is found"
+    },
+    {
+      "name": ["-m", "--max-count"],
+      "description": "Stop reading a file after the given number of matches",
+      "args": {
+        "name": "num"
+      }
+    },
+    {
+      "name": ["-A", "--after-context"],
+      "description": "Print lines of trailing context after matching lines",
+      "args": {
+        "name": "num"
+      }
+    },
+    {
+      "name": ["-B", "--before-context"],
+      "description": "Print lines of leading context before matching lines",
+      "args": {
+        "name": "num"
+      }
+    },
+    {
+      "name": ["-C", "--context"],
+      "description": "Print lines of leading and trailing context around matching lines",
+      "args": {
+        "name": "num"
+      }
+    },
+    {
+      "name": ["-P", "--perl-regexp"],
+      "description": "Interpret patterns as Perl-compatible regular expressions"
+    },
+    {
+      "name": ["-F", "--fixed-strings"],
+      "description": "Interpret patterns as fixed strings, not regular expressions"
+    },
+    {
+      "name": ["-L", "--files-without-match"],
+      "description": "Print only the names of files not containing matches"
+    },
+    {
+      "name": ["-H", "--with-filename"],
+      "description": "Print the file name for each match"
+    },
+    {
+      "name": ["-h", "--no-filename"],
+      "description": "Suppress the file name prefix on output"
+    }
+  ],
+  "args": [
+    {
+      "name": "pattern"
+    },
+    {
+      "name": "file",
+      "template": "filepaths",
+      "isVariadic": true,
+      "isOptional": true
+    }
+  ]
+}

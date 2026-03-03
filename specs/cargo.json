@@ -1,0 +1,946 @@
+{
+  "name": "cargo",
+  "description": "The Rust package manager",
+  "options": [
+    {
+      "name": "--version",
+      "description": "Print version info and exit"
+    },
+    {
+      "name": "--help",
+      "description": "Print help information"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Use verbose output",
+      "isRepeatable": true
+    },
+    {
+      "name": ["-q", "--quiet"],
+      "description": "Do not print cargo log messages"
+    },
+    {
+      "name": "--color",
+      "description": "Control when colored output is used",
+      "args": {
+        "name": "when",
+        "suggestions": ["auto", "always", "never"]
+      }
+    },
+    {
+      "name": "--frozen",
+      "description": "Require Cargo.lock and cache are up to date"
+    },
+    {
+      "name": "--locked",
+      "description": "Require Cargo.lock is up to date"
+    },
+    {
+      "name": "--offline",
+      "description": "Run without accessing the network"
+    }
+  ],
+  "subcommands": [
+    {
+      "name": "build",
+      "description": "Compile the current package",
+      "options": [
+        {
+          "name": "--release",
+          "description": "Build in release mode with optimizations"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Build only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--all",
+          "description": "Build all packages in the workspace"
+        },
+        {
+          "name": "--workspace",
+          "description": "Build all members in the workspace"
+        },
+        {
+          "name": "--lib",
+          "description": "Build only the library"
+        },
+        {
+          "name": "--bin",
+          "description": "Build only the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--bins",
+          "description": "Build all binaries"
+        },
+        {
+          "name": "--example",
+          "description": "Build only the specified example",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--examples",
+          "description": "Build all examples"
+        },
+        {
+          "name": "--target",
+          "description": "Build for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        },
+        {
+          "name": "--target-dir",
+          "description": "Directory for all generated artifacts",
+          "args": {
+            "name": "directory",
+            "template": "folders"
+          }
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": ["-j", "--jobs"],
+          "description": "Number of parallel jobs",
+          "args": {
+            "name": "N"
+          }
+        },
+        {
+          "name": "--profile",
+          "description": "Build with the specified profile",
+          "args": {
+            "name": "profile-name"
+          }
+        },
+        {
+          "name": "--message-format",
+          "description": "Error format",
+          "args": {
+            "name": "fmt",
+            "suggestions": ["human", "short", "json", "json-diagnostic-short", "json-diagnostic-rendered-ansi"]
+          }
+        }
+      ]
+    },
+    {
+      "name": ["check", "c"],
+      "description": "Analyze the current package and report errors without producing output",
+      "options": [
+        {
+          "name": "--release",
+          "description": "Check in release mode"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Check only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--workspace",
+          "description": "Check all members in the workspace"
+        },
+        {
+          "name": "--lib",
+          "description": "Check only the library"
+        },
+        {
+          "name": "--bin",
+          "description": "Check only the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--all-targets",
+          "description": "Check all targets"
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "--target",
+          "description": "Check for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        },
+        {
+          "name": "--profile",
+          "description": "Check with the specified profile",
+          "args": {
+            "name": "profile-name"
+          }
+        }
+      ]
+    },
+    {
+      "name": "clean",
+      "description": "Remove generated artifacts from the target directory",
+      "options": [
+        {
+          "name": ["-p", "--package"],
+          "description": "Clean only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--release",
+          "description": "Clean release artifacts"
+        },
+        {
+          "name": "--target",
+          "description": "Clean for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        },
+        {
+          "name": "--target-dir",
+          "description": "Directory for all generated artifacts",
+          "args": {
+            "name": "directory",
+            "template": "folders"
+          }
+        },
+        {
+          "name": "--doc",
+          "description": "Clean just the documentation directory"
+        },
+        {
+          "name": "--profile",
+          "description": "Clean the specified profile",
+          "args": {
+            "name": "profile-name"
+          }
+        }
+      ]
+    },
+    {
+      "name": "doc",
+      "description": "Build package documentation",
+      "options": [
+        {
+          "name": "--open",
+          "description": "Open the documentation in a browser after building"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Document only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--workspace",
+          "description": "Document all members in the workspace"
+        },
+        {
+          "name": "--no-deps",
+          "description": "Do not build documentation for dependencies"
+        },
+        {
+          "name": "--document-private-items",
+          "description": "Document private items"
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "--release",
+          "description": "Build documentation in release mode"
+        },
+        {
+          "name": "--target",
+          "description": "Build documentation for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        }
+      ]
+    },
+    {
+      "name": "new",
+      "description": "Create a new Cargo package",
+      "options": [
+        {
+          "name": "--lib",
+          "description": "Create a library package"
+        },
+        {
+          "name": "--bin",
+          "description": "Create a binary package (default)"
+        },
+        {
+          "name": "--edition",
+          "description": "Set the Rust edition",
+          "args": {
+            "name": "year",
+            "suggestions": ["2015", "2018", "2021", "2024"]
+          }
+        },
+        {
+          "name": "--name",
+          "description": "Set the resulting package name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--vcs",
+          "description": "Initialize a version control system",
+          "args": {
+            "name": "vcs",
+            "suggestions": ["git", "hg", "pijul", "fossil", "none"]
+          }
+        }
+      ],
+      "args": {
+        "name": "path",
+        "template": "folders"
+      }
+    },
+    {
+      "name": "init",
+      "description": "Create a new Cargo package in an existing directory",
+      "options": [
+        {
+          "name": "--lib",
+          "description": "Create a library package"
+        },
+        {
+          "name": "--bin",
+          "description": "Create a binary package (default)"
+        },
+        {
+          "name": "--edition",
+          "description": "Set the Rust edition",
+          "args": {
+            "name": "year",
+            "suggestions": ["2015", "2018", "2021", "2024"]
+          }
+        },
+        {
+          "name": "--name",
+          "description": "Set the resulting package name",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--vcs",
+          "description": "Initialize a version control system",
+          "args": {
+            "name": "vcs",
+            "suggestions": ["git", "hg", "pijul", "fossil", "none"]
+          }
+        }
+      ],
+      "args": {
+        "name": "path",
+        "template": "folders",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "add",
+      "description": "Add dependencies to a Cargo.toml manifest file",
+      "options": [
+        {
+          "name": "--dev",
+          "description": "Add as a development dependency"
+        },
+        {
+          "name": "--build",
+          "description": "Add as a build dependency"
+        },
+        {
+          "name": "--optional",
+          "description": "Mark the dependency as optional"
+        },
+        {
+          "name": "--no-optional",
+          "description": "Mark the dependency as required"
+        },
+        {
+          "name": "--rename",
+          "description": "Rename the dependency",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Disable the default features"
+        },
+        {
+          "name": "--path",
+          "description": "Filesystem path to local crate to add",
+          "args": {
+            "name": "path",
+            "template": "folders"
+          }
+        },
+        {
+          "name": "--git",
+          "description": "Git URL to add the crate from",
+          "args": {
+            "name": "uri"
+          }
+        },
+        {
+          "name": "--branch",
+          "description": "Git branch to use when adding from git",
+          "args": {
+            "name": "branch"
+          }
+        },
+        {
+          "name": "--tag",
+          "description": "Git tag to use when adding from git",
+          "args": {
+            "name": "tag"
+          }
+        },
+        {
+          "name": "--rev",
+          "description": "Git revision to use when adding from git",
+          "args": {
+            "name": "rev"
+          }
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Package to modify",
+          "args": {
+            "name": "spec"
+          }
+        }
+      ],
+      "args": {
+        "name": "dep",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "remove",
+      "description": "Remove dependencies from a Cargo.toml manifest file",
+      "options": [
+        {
+          "name": "--dev",
+          "description": "Remove as a development dependency"
+        },
+        {
+          "name": "--build",
+          "description": "Remove as a build dependency"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Package to modify",
+          "args": {
+            "name": "spec"
+          }
+        }
+      ],
+      "args": {
+        "name": "dep",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": ["run", "r"],
+      "description": "Run a binary or example of the local package",
+      "options": [
+        {
+          "name": "--release",
+          "description": "Run in release mode with optimizations"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Run the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--bin",
+          "description": "Run the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--example",
+          "description": "Run the specified example",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "--target",
+          "description": "Run for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        },
+        {
+          "name": ["-j", "--jobs"],
+          "description": "Number of parallel jobs",
+          "args": {
+            "name": "N"
+          }
+        },
+        {
+          "name": "--profile",
+          "description": "Run with the specified profile",
+          "args": {
+            "name": "profile-name"
+          }
+        }
+      ]
+    },
+    {
+      "name": ["test", "t"],
+      "description": "Run the tests",
+      "options": [
+        {
+          "name": "--release",
+          "description": "Test in release mode with optimizations"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Test only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--workspace",
+          "description": "Test all members in the workspace"
+        },
+        {
+          "name": "--lib",
+          "description": "Test only the library"
+        },
+        {
+          "name": "--bin",
+          "description": "Test only the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--bins",
+          "description": "Test all binaries"
+        },
+        {
+          "name": "--test",
+          "description": "Test only the specified integration test",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--tests",
+          "description": "Test all integration tests"
+        },
+        {
+          "name": "--doc",
+          "description": "Test only documentation examples"
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "--target",
+          "description": "Test for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        },
+        {
+          "name": "--no-run",
+          "description": "Compile but do not run tests"
+        },
+        {
+          "name": "--no-fail-fast",
+          "description": "Run all tests regardless of failure"
+        },
+        {
+          "name": ["-j", "--jobs"],
+          "description": "Number of parallel jobs",
+          "args": {
+            "name": "N"
+          }
+        },
+        {
+          "name": "--profile",
+          "description": "Test with the specified profile",
+          "args": {
+            "name": "profile-name"
+          }
+        }
+      ],
+      "args": {
+        "name": "testname",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "bench",
+      "description": "Run benchmarks",
+      "options": [
+        {
+          "name": ["-p", "--package"],
+          "description": "Benchmark only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--workspace",
+          "description": "Benchmark all members in the workspace"
+        },
+        {
+          "name": "--lib",
+          "description": "Benchmark only the library"
+        },
+        {
+          "name": "--bin",
+          "description": "Benchmark only the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--bench",
+          "description": "Benchmark only the specified benchmark target",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "--no-run",
+          "description": "Compile but do not run benchmarks"
+        },
+        {
+          "name": "--target",
+          "description": "Benchmark for the given target triple",
+          "args": {
+            "name": "triple"
+          }
+        }
+      ],
+      "args": {
+        "name": "benchname",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "update",
+      "description": "Update dependencies as recorded in the local lock file",
+      "options": [
+        {
+          "name": ["-p", "--package"],
+          "description": "Update only the specified package",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Show what would be updated without actually doing it"
+        },
+        {
+          "name": "--workspace",
+          "description": "Update all members in the workspace"
+        },
+        {
+          "name": "--precise",
+          "description": "Update a single dependency to the specified version",
+          "args": {
+            "name": "version"
+          }
+        }
+      ]
+    },
+    {
+      "name": "search",
+      "description": "Search packages in crates.io",
+      "options": [
+        {
+          "name": "--limit",
+          "description": "Limit the number of results",
+          "args": {
+            "name": "limit"
+          }
+        }
+      ],
+      "args": {
+        "name": "query",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "publish",
+      "description": "Package and upload this package to the registry",
+      "options": [
+        {
+          "name": "--dry-run",
+          "description": "Perform all checks without uploading"
+        },
+        {
+          "name": "--token",
+          "description": "API token to use for authentication",
+          "args": {
+            "name": "token"
+          }
+        },
+        {
+          "name": "--registry",
+          "description": "Registry to publish to",
+          "args": {
+            "name": "registry"
+          }
+        },
+        {
+          "name": "--allow-dirty",
+          "description": "Allow dirty working directories to be packaged"
+        },
+        {
+          "name": "--no-verify",
+          "description": "Do not verify the contents by building them"
+        },
+        {
+          "name": ["-p", "--package"],
+          "description": "Package to publish",
+          "args": {
+            "name": "spec"
+          }
+        }
+      ]
+    },
+    {
+      "name": "install",
+      "description": "Install a Rust binary",
+      "options": [
+        {
+          "name": "--version",
+          "description": "Specify a version to install",
+          "args": {
+            "name": "version"
+          }
+        },
+        {
+          "name": "--git",
+          "description": "Git URL to install from",
+          "args": {
+            "name": "url"
+          }
+        },
+        {
+          "name": "--branch",
+          "description": "Branch to use when installing from git",
+          "args": {
+            "name": "branch"
+          }
+        },
+        {
+          "name": "--tag",
+          "description": "Tag to use when installing from git",
+          "args": {
+            "name": "tag"
+          }
+        },
+        {
+          "name": "--rev",
+          "description": "Specific commit to use when installing from git",
+          "args": {
+            "name": "sha"
+          }
+        },
+        {
+          "name": "--path",
+          "description": "Filesystem path to install from",
+          "args": {
+            "name": "path",
+            "template": "folders"
+          }
+        },
+        {
+          "name": "--root",
+          "description": "Directory to install packages into",
+          "args": {
+            "name": "dir",
+            "template": "folders"
+          }
+        },
+        {
+          "name": ["-F", "--features"],
+          "description": "Space or comma separated list of features to activate",
+          "args": {
+            "name": "features"
+          }
+        },
+        {
+          "name": "--all-features",
+          "description": "Activate all available features"
+        },
+        {
+          "name": "--no-default-features",
+          "description": "Do not activate the default feature"
+        },
+        {
+          "name": "-f",
+          "description": "Force overwriting existing crates or binaries"
+        },
+        {
+          "name": ["-j", "--jobs"],
+          "description": "Number of parallel jobs",
+          "args": {
+            "name": "N"
+          }
+        },
+        {
+          "name": "--locked",
+          "description": "Require Cargo.lock is up to date"
+        }
+      ],
+      "args": {
+        "name": "crate",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "uninstall",
+      "description": "Remove a Rust binary",
+      "options": [
+        {
+          "name": ["-p", "--package"],
+          "description": "Package to uninstall",
+          "args": {
+            "name": "spec"
+          }
+        },
+        {
+          "name": "--bin",
+          "description": "Only uninstall the specified binary",
+          "args": {
+            "name": "name"
+          }
+        },
+        {
+          "name": "--root",
+          "description": "Directory to uninstall packages from",
+          "args": {
+            "name": "dir",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "spec",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    }
+  ]
+}

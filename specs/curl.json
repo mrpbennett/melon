@@ -1,0 +1,205 @@
+{
+  "name": "curl",
+  "description": "Transfer data from or to a server using URLs",
+  "options": [
+    {
+      "name": ["-X", "--request"],
+      "description": "Specify the HTTP method to use",
+      "args": {
+        "name": "method",
+        "suggestions": ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD", "OPTIONS"]
+      }
+    },
+    {
+      "name": ["-H", "--header"],
+      "description": "Pass a custom header to the server",
+      "args": {
+        "name": "header"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": ["-d", "--data"],
+      "description": "Send data in a POST request",
+      "args": {
+        "name": "data"
+      }
+    },
+    {
+      "name": "--data-raw",
+      "description": "Send data in a POST request without special interpretation of @ characters",
+      "args": {
+        "name": "data"
+      }
+    },
+    {
+      "name": "--data-binary",
+      "description": "Send binary data in a POST request",
+      "args": {
+        "name": "data"
+      }
+    },
+    {
+      "name": "--data-urlencode",
+      "description": "Send URL-encoded data in a POST request",
+      "args": {
+        "name": "data"
+      }
+    },
+    {
+      "name": ["-o", "--output"],
+      "description": "Write output to a file instead of stdout",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-O", "--remote-name"],
+      "description": "Write output to a file named as the remote file"
+    },
+    {
+      "name": ["-s", "--silent"],
+      "description": "Silent mode, do not show progress meter or error messages"
+    },
+    {
+      "name": ["-S", "--show-error"],
+      "description": "When used with -s, show an error message if it fails"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Make the operation more talkative"
+    },
+    {
+      "name": ["-L", "--location"],
+      "description": "Follow redirects"
+    },
+    {
+      "name": ["-k", "--insecure"],
+      "description": "Allow insecure server connections over TLS"
+    },
+    {
+      "name": ["-u", "--user"],
+      "description": "Specify the user name and password for server authentication",
+      "args": {
+        "name": "user:password"
+      }
+    },
+    {
+      "name": ["-b", "--cookie"],
+      "description": "Send cookies from string or file",
+      "args": {
+        "name": "data-or-filename"
+      }
+    },
+    {
+      "name": ["-c", "--cookie-jar"],
+      "description": "Write cookies to this file after operation",
+      "args": {
+        "name": "filename",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "--compressed",
+      "description": "Request compressed response and decompress automatically"
+    },
+    {
+      "name": ["-f", "--fail"],
+      "description": "Fail silently on HTTP errors (no output)"
+    },
+    {
+      "name": ["-i", "--include"],
+      "description": "Include HTTP response headers in the output"
+    },
+    {
+      "name": ["-I", "--head"],
+      "description": "Fetch the headers only (HTTP HEAD request)"
+    },
+    {
+      "name": "--connect-timeout",
+      "description": "Maximum time in seconds for the connection to be established",
+      "args": {
+        "name": "seconds"
+      }
+    },
+    {
+      "name": ["-m", "--max-time"],
+      "description": "Maximum time in seconds for the whole operation",
+      "args": {
+        "name": "seconds"
+      }
+    },
+    {
+      "name": "--retry",
+      "description": "Retry the request this number of times on transient errors",
+      "args": {
+        "name": "num"
+      }
+    },
+    {
+      "name": ["-A", "--user-agent"],
+      "description": "Specify the User-Agent string to send",
+      "args": {
+        "name": "name"
+      }
+    },
+    {
+      "name": ["-e", "--referer"],
+      "description": "Send the Referer header to the server",
+      "args": {
+        "name": "URL"
+      }
+    },
+    {
+      "name": ["-x", "--proxy"],
+      "description": "Use the specified proxy",
+      "args": {
+        "name": "proxyhost:port"
+      }
+    },
+    {
+      "name": "-w",
+      "description": "Display information after a completed transfer",
+      "args": {
+        "name": "format"
+      }
+    },
+    {
+      "name": ["-F", "--form"],
+      "description": "Specify multipart form data",
+      "args": {
+        "name": "name=content"
+      },
+      "isRepeatable": true
+    },
+    {
+      "name": "--cert",
+      "description": "Use the specified client certificate file",
+      "args": {
+        "name": "certificate:password",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "--cacert",
+      "description": "Use the specified CA certificate to verify the peer",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": "--key",
+      "description": "Private key file name",
+      "args": {
+        "name": "key",
+        "template": "filepaths"
+      }
+    }
+  ],
+  "args": {
+    "name": "url",
+    "isVariadic": true
+  }
+}

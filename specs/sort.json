@@ -1,0 +1,78 @@
+{
+  "name": "sort",
+  "description": "Sort lines of text files",
+  "options": [
+    {
+      "name": ["-r", "--reverse"],
+      "description": "Reverse the result of comparisons"
+    },
+    {
+      "name": ["-n", "--numeric-sort"],
+      "description": "Compare according to string numerical value"
+    },
+    {
+      "name": ["-k", "--key"],
+      "description": "Sort via a key; KEYDEF gives location and type",
+      "args": {
+        "name": "keydef"
+      }
+    },
+    {
+      "name": ["-t", "--field-separator"],
+      "description": "Use the specified character as the field separator",
+      "args": {
+        "name": "separator"
+      }
+    },
+    {
+      "name": ["-u", "--unique"],
+      "description": "Output only the first of an equal run"
+    },
+    {
+      "name": ["-o", "--output"],
+      "description": "Write result to file instead of standard output",
+      "args": {
+        "name": "file",
+        "template": "filepaths"
+      }
+    },
+    {
+      "name": ["-f", "--ignore-case"],
+      "description": "Fold lower case to upper case characters"
+    },
+    {
+      "name": ["-h", "--human-numeric-sort"],
+      "description": "Compare human readable numbers (e.g., 2K, 1G)"
+    },
+    {
+      "name": ["-M", "--month-sort"],
+      "description": "Compare as month names (JAN < FEB < ... < DEC)"
+    },
+    {
+      "name": ["-V", "--version-sort"],
+      "description": "Natural sort of version numbers within text"
+    },
+    {
+      "name": ["-b", "--ignore-leading-blanks"],
+      "description": "Ignore leading blanks"
+    },
+    {
+      "name": ["-c", "--check"],
+      "description": "Check for sorted input; do not sort"
+    },
+    {
+      "name": ["-s", "--stable"],
+      "description": "Stabilize sort by disabling last-resort comparison"
+    },
+    {
+      "name": ["-z", "--zero-terminated"],
+      "description": "Line delimiter is NUL, not newline"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}

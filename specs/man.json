@@ -1,0 +1,39 @@
+{
+  "name": "man",
+  "description": "Display manual pages",
+  "options": [
+    {
+      "name": "-k",
+      "description": "Search the short descriptions and manual page names for a keyword",
+      "args": {
+        "name": "keyword"
+      }
+    },
+    {
+      "name": "-f",
+      "description": "Display a short description from the manual page",
+      "args": {
+        "name": "keyword"
+      }
+    },
+    {
+      "name": "-a",
+      "description": "Display all matching manual pages"
+    },
+    {
+      "name": "-w",
+      "description": "Print the location of the manual page instead of displaying it"
+    }
+  ],
+  "args": [
+    {
+      "name": "section",
+      "isOptional": true,
+      "suggestions": ["1", "2", "3", "4", "5", "6", "7", "8"]
+    },
+    {
+      "name": "name",
+      "isVariadic": true
+    }
+  ]
+}

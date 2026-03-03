@@ -1,0 +1,474 @@
+{
+  "name": "npm",
+  "description": "Node package manager",
+  "options": [
+    {
+      "name": "--version",
+      "description": "Print npm version"
+    },
+    {
+      "name": ["-h", "--help"],
+      "description": "Print help information"
+    },
+    {
+      "name": "--loglevel",
+      "description": "Set the log level",
+      "args": {
+        "name": "level",
+        "suggestions": ["silent", "error", "warn", "notice", "http", "timing", "info", "verbose", "silly"]
+      }
+    },
+    {
+      "name": "--registry",
+      "description": "The base URL of the npm registry",
+      "args": {
+        "name": "url"
+      }
+    }
+  ],
+  "subcommands": [
+    {
+      "name": ["install", "i"],
+      "description": "Install a package and its dependencies",
+      "options": [
+        {
+          "name": ["-D", "--save-dev"],
+          "description": "Save package to devDependencies"
+        },
+        {
+          "name": ["-S", "--save"],
+          "description": "Save package to dependencies"
+        },
+        {
+          "name": ["-g", "--global"],
+          "description": "Install the package globally"
+        },
+        {
+          "name": "--save-exact",
+          "description": "Save exact version instead of using a semver range"
+        },
+        {
+          "name": "--save-optional",
+          "description": "Save package to optionalDependencies"
+        },
+        {
+          "name": "--no-save",
+          "description": "Prevents saving to dependencies"
+        },
+        {
+          "name": ["-E", "--save-exact"],
+          "description": "Saved dependencies will be configured with an exact version"
+        },
+        {
+          "name": "--legacy-peer-deps",
+          "description": "Ignore all peerDependencies when installing"
+        },
+        {
+          "name": "--force",
+          "description": "Force npm to fetch remote resources even if a local copy exists"
+        },
+        {
+          "name": "--no-optional",
+          "description": "Do not install optional dependencies"
+        },
+        {
+          "name": "--production",
+          "description": "Do not install devDependencies"
+        },
+        {
+          "name": "--dry-run",
+          "description": "Report what would be done without actually installing"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["uninstall", "remove", "rm", "un"],
+      "description": "Remove a package",
+      "options": [
+        {
+          "name": ["-S", "--save"],
+          "description": "Remove from dependencies"
+        },
+        {
+          "name": ["-D", "--save-dev"],
+          "description": "Remove from devDependencies"
+        },
+        {
+          "name": ["-g", "--global"],
+          "description": "Remove the package globally"
+        },
+        {
+          "name": "--no-save",
+          "description": "Do not remove from package.json"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "run",
+      "description": "Run arbitrary package scripts",
+      "options": [
+        {
+          "name": "--silent",
+          "description": "Suppress output from the script itself"
+        },
+        {
+          "name": "--if-present",
+          "description": "Do not error if the script is not defined"
+        },
+        {
+          "name": "--ignore-scripts",
+          "description": "Do not run any pre or post scripts"
+        }
+      ],
+      "args": {
+        "name": "script"
+      }
+    },
+    {
+      "name": "start",
+      "description": "Start a package",
+      "options": [
+        {
+          "name": "--ignore-scripts",
+          "description": "Do not run any pre or post scripts"
+        }
+      ]
+    },
+    {
+      "name": "test",
+      "description": "Test a package",
+      "options": [
+        {
+          "name": "--ignore-scripts",
+          "description": "Do not run any pre or post scripts"
+        }
+      ]
+    },
+    {
+      "name": "init",
+      "description": "Create a package.json file",
+      "options": [
+        {
+          "name": ["-y", "--yes"],
+          "description": "Skip the questionnaire and generate a default package.json"
+        },
+        {
+          "name": "--scope",
+          "description": "Create a scoped package",
+          "args": {
+            "name": "scope"
+          }
+        },
+        {
+          "name": ["-w", "--workspace"],
+          "description": "Create a new workspace",
+          "args": {
+            "name": "workspace"
+          }
+        }
+      ],
+      "args": {
+        "name": "initializer",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "publish",
+      "description": "Publish a package to the registry",
+      "options": [
+        {
+          "name": "--tag",
+          "description": "Registers the published package with the given tag",
+          "args": {
+            "name": "tag"
+          }
+        },
+        {
+          "name": "--access",
+          "description": "Set the access level of the published package",
+          "args": {
+            "name": "level",
+            "suggestions": ["public", "restricted"]
+          }
+        },
+        {
+          "name": "--dry-run",
+          "description": "Report what would be done without actually publishing"
+        },
+        {
+          "name": "--otp",
+          "description": "One-time password from an authenticator",
+          "args": {
+            "name": "otp"
+          }
+        }
+      ],
+      "args": {
+        "name": "tarball-or-folder",
+        "template": "filepaths",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "pack",
+      "description": "Create a tarball from a package",
+      "options": [
+        {
+          "name": "--dry-run",
+          "description": "Report what would be included without actually packing"
+        },
+        {
+          "name": "--pack-destination",
+          "description": "Directory in which the tarball will be saved",
+          "args": {
+            "name": "path",
+            "template": "folders"
+          }
+        }
+      ],
+      "args": {
+        "name": "package-spec",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "link",
+      "description": "Symlink a package folder",
+      "options": [
+        {
+          "name": ["-g", "--global"],
+          "description": "Link to the global prefix"
+        },
+        {
+          "name": "--force",
+          "description": "Force link even if it already exists"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "ci",
+      "description": "Clean install a project, based on package-lock.json",
+      "options": [
+        {
+          "name": "--ignore-scripts",
+          "description": "Do not run any pre or post scripts"
+        },
+        {
+          "name": "--no-audit",
+          "description": "Do not submit audit reports"
+        },
+        {
+          "name": "--no-fund",
+          "description": "Do not display funding information"
+        },
+        {
+          "name": "--legacy-peer-deps",
+          "description": "Ignore all peerDependencies when installing"
+        }
+      ]
+    },
+    {
+      "name": "audit",
+      "description": "Run a security audit",
+      "options": [
+        {
+          "name": "--json",
+          "description": "Output audit report in JSON format"
+        },
+        {
+          "name": "--production",
+          "description": "Only audit production dependencies"
+        },
+        {
+          "name": "--audit-level",
+          "description": "Minimum level of vulnerability for exit with a non-zero exit code",
+          "args": {
+            "name": "level",
+            "suggestions": ["info", "low", "moderate", "high", "critical", "none"]
+          }
+        },
+        {
+          "name": "--omit",
+          "description": "Omit dependency types from the audit",
+          "args": {
+            "name": "type",
+            "suggestions": ["dev", "optional", "peer"]
+          }
+        }
+      ],
+      "subcommands": [
+        {
+          "name": "fix",
+          "description": "Apply remediation to the package tree"
+        },
+        {
+          "name": "signatures",
+          "description": "Verify registry signatures"
+        }
+      ]
+    },
+    {
+      "name": "outdated",
+      "description": "Check for outdated packages",
+      "options": [
+        {
+          "name": ["-g", "--global"],
+          "description": "Check global packages"
+        },
+        {
+          "name": ["-l", "--long"],
+          "description": "Show extended information"
+        },
+        {
+          "name": "--json",
+          "description": "Output in JSON format"
+        },
+        {
+          "name": ["-a", "--all"],
+          "description": "Show all outdated packages, including transitive"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": "update",
+      "description": "Update installed packages",
+      "options": [
+        {
+          "name": ["-g", "--global"],
+          "description": "Update global packages"
+        },
+        {
+          "name": "--save",
+          "description": "Save updated versions to package.json"
+        },
+        {
+          "name": "--dry-run",
+          "description": "Report what would be updated without actually updating"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["ls", "list"],
+      "description": "List installed packages",
+      "options": [
+        {
+          "name": ["-a", "--all"],
+          "description": "Show all packages, not just top level"
+        },
+        {
+          "name": ["-g", "--global"],
+          "description": "List global packages"
+        },
+        {
+          "name": "--json",
+          "description": "Output in JSON format"
+        },
+        {
+          "name": ["-l", "--long"],
+          "description": "Show extended information"
+        },
+        {
+          "name": "--depth",
+          "description": "Max display depth of the dependency tree",
+          "args": {
+            "name": "depth"
+          }
+        },
+        {
+          "name": "--prod",
+          "description": "Show only production dependencies"
+        },
+        {
+          "name": "--dev",
+          "description": "Show only dev dependencies"
+        }
+      ],
+      "args": {
+        "name": "package",
+        "isVariadic": true,
+        "isOptional": true
+      }
+    },
+    {
+      "name": ["exec", "x"],
+      "description": "Run a command from a local or remote npm package",
+      "options": [
+        {
+          "name": ["-p", "--package"],
+          "description": "Package to install for exec",
+          "args": {
+            "name": "package"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": ["-c", "--call"],
+          "description": "Run the specified string as a shell command",
+          "args": {
+            "name": "command"
+          }
+        },
+        {
+          "name": "--yes",
+          "description": "Automatically say yes to any prompts"
+        },
+        {
+          "name": "--no",
+          "description": "Automatically say no to any prompts"
+        }
+      ],
+      "args": {
+        "name": "command",
+        "isVariadic": true
+      }
+    },
+    {
+      "name": "cache",
+      "description": "Manipulates packages cache",
+      "subcommands": [
+        {
+          "name": "clean",
+          "description": "Delete all data out of the cache folder",
+          "options": [
+            {
+              "name": "--force",
+              "description": "Force cache clean even if not necessary"
+            }
+          ]
+        },
+        {
+          "name": "ls",
+          "description": "Show the contents of the cache"
+        },
+        {
+          "name": "verify",
+          "description": "Verify the contents of the cache folder"
+        }
+      ]
+    }
+  ]
+}

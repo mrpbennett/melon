@@ -1,0 +1,1644 @@
+{
+  "name": "gh",
+  "description": "GitHub CLI",
+  "subcommands": [
+    {
+      "name": "pr",
+      "description": "Manage pull requests",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a pull request",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "Title for the pull request",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Body for the pull request",
+              "args": {
+                "name": "body"
+              }
+            },
+            {
+              "name": ["-B", "--base"],
+              "description": "The branch into which you want your code merged",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": ["-H", "--head"],
+              "description": "The branch that contains commits for your pull request",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": ["-d", "--draft"],
+              "description": "Mark pull request as a draft"
+            },
+            {
+              "name": ["-f", "--fill"],
+              "description": "Use commit info for title and body"
+            },
+            {
+              "name": ["-l", "--label"],
+              "description": "Add labels by name",
+              "args": {
+                "name": "name"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-a", "--assignee"],
+              "description": "Assign people by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-r", "--reviewer"],
+              "description": "Request reviews from people by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-m", "--milestone"],
+              "description": "Add the pull request to a milestone by name",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the web browser to create a pull request"
+            },
+            {
+              "name": "--no-maintainer-edit",
+              "description": "Disable maintainer's ability to modify pull request"
+            },
+            {
+              "name": "--body-file",
+              "description": "Read body text from file",
+              "args": {
+                "name": "file",
+                "template": "filepaths"
+              }
+            }
+          ]
+        },
+        {
+          "name": "list",
+          "description": "List pull requests in a repository",
+          "options": [
+            {
+              "name": ["-s", "--state"],
+              "description": "Filter by state",
+              "args": {
+                "name": "state",
+                "suggestions": ["open", "closed", "merged", "all"]
+              }
+            },
+            {
+              "name": ["-l", "--label"],
+              "description": "Filter by label",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-a", "--assignee"],
+              "description": "Filter by assignee",
+              "args": {
+                "name": "login"
+              }
+            },
+            {
+              "name": ["-A", "--author"],
+              "description": "Filter by author",
+              "args": {
+                "name": "login"
+              }
+            },
+            {
+              "name": ["-B", "--base"],
+              "description": "Filter by base branch",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of items to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": ["-S", "--search"],
+              "description": "Search pull requests with a query",
+              "args": {
+                "name": "query"
+              }
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the browser to list pull requests"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View a pull request",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open a pull request in the browser"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            },
+            {
+              "name": ["-c", "--comments"],
+              "description": "View pull request comments"
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "checkout",
+          "description": "Check out a pull request in git",
+          "options": [
+            {
+              "name": ["-b", "--branch"],
+              "description": "Local branch name to use",
+              "args": {
+                "name": "string"
+              }
+            },
+            {
+              "name": "--detach",
+              "description": "Checkout PR with a detached HEAD"
+            },
+            {
+              "name": ["-f", "--force"],
+              "description": "Reset the existing local branch to the latest state of the pull request"
+            },
+            {
+              "name": "--recurse-submodules",
+              "description": "Update all submodules after checkout"
+            }
+          ],
+          "args": {
+            "name": "number-or-url-or-branch"
+          }
+        },
+        {
+          "name": "merge",
+          "description": "Merge a pull request",
+          "options": [
+            {
+              "name": ["-m", "--merge"],
+              "description": "Merge the commits with the base branch"
+            },
+            {
+              "name": ["-s", "--squash"],
+              "description": "Squash the commits into one commit and merge"
+            },
+            {
+              "name": ["-r", "--rebase"],
+              "description": "Rebase the commits onto the base branch"
+            },
+            {
+              "name": ["-d", "--delete-branch"],
+              "description": "Delete the local and remote branch after merge"
+            },
+            {
+              "name": "--auto",
+              "description": "Automatically merge when requirements are met"
+            },
+            {
+              "name": "--admin",
+              "description": "Use administrator privileges to merge"
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Body text for the merge commit",
+              "args": {
+                "name": "text"
+              }
+            },
+            {
+              "name": ["-t", "--subject"],
+              "description": "Subject text for the merge commit",
+              "args": {
+                "name": "text"
+              }
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "close",
+          "description": "Close a pull request",
+          "options": [
+            {
+              "name": ["-d", "--delete-branch"],
+              "description": "Delete the local and remote branch after close"
+            },
+            {
+              "name": ["-c", "--comment"],
+              "description": "Add a closing comment",
+              "args": {
+                "name": "text"
+              }
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "diff",
+          "description": "View changes in a pull request",
+          "options": [
+            {
+              "name": "--color",
+              "description": "Use color in diff output",
+              "args": {
+                "name": "when",
+                "suggestions": ["always", "never", "auto"]
+              }
+            },
+            {
+              "name": "--patch",
+              "description": "Display diff in patch format"
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "ready",
+          "description": "Mark a pull request as ready for review",
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "review",
+          "description": "Add a review to a pull request",
+          "options": [
+            {
+              "name": ["-a", "--approve"],
+              "description": "Approve pull request"
+            },
+            {
+              "name": ["-r", "--request-changes"],
+              "description": "Request changes on pull request"
+            },
+            {
+              "name": ["-c", "--comment"],
+              "description": "Leave a review comment"
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Specify the body of a review",
+              "args": {
+                "name": "text"
+              }
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "checks",
+          "description": "Show CI status for a single pull request",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the browser to show CI status"
+            },
+            {
+              "name": "--watch",
+              "description": "Watch checks until they finish"
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "edit",
+          "description": "Edit a pull request",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "Set the title",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Set the body",
+              "args": {
+                "name": "body"
+              }
+            },
+            {
+              "name": ["-B", "--base"],
+              "description": "Change the base branch",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": "--add-label",
+              "description": "Add labels by name",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--remove-label",
+              "description": "Remove labels by name",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--add-assignee",
+              "description": "Add assigned users by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--remove-assignee",
+              "description": "Remove assigned users by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            }
+          ],
+          "args": {
+            "name": "number",
+            "isOptional": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "issue",
+      "description": "Manage issues",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a new issue",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "Supply a title",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Supply a body",
+              "args": {
+                "name": "body"
+              }
+            },
+            {
+              "name": ["-l", "--label"],
+              "description": "Add labels by name",
+              "args": {
+                "name": "name"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-a", "--assignee"],
+              "description": "Assign people by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-m", "--milestone"],
+              "description": "Add the issue to a milestone by name",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the browser to create an issue"
+            },
+            {
+              "name": "--body-file",
+              "description": "Read body text from file",
+              "args": {
+                "name": "file",
+                "template": "filepaths"
+              }
+            }
+          ]
+        },
+        {
+          "name": "list",
+          "description": "List issues in a repository",
+          "options": [
+            {
+              "name": ["-s", "--state"],
+              "description": "Filter by state",
+              "args": {
+                "name": "state",
+                "suggestions": ["open", "closed", "all"]
+              }
+            },
+            {
+              "name": ["-l", "--label"],
+              "description": "Filter by label",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": ["-a", "--assignee"],
+              "description": "Filter by assignee",
+              "args": {
+                "name": "login"
+              }
+            },
+            {
+              "name": ["-A", "--author"],
+              "description": "Filter by author",
+              "args": {
+                "name": "login"
+              }
+            },
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of issues to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": ["-S", "--search"],
+              "description": "Search issues with a query",
+              "args": {
+                "name": "query"
+              }
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the browser to list issues"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View an issue",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open an issue in the browser"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            },
+            {
+              "name": ["-c", "--comments"],
+              "description": "View issue comments"
+            }
+          ],
+          "args": {
+            "name": "number"
+          }
+        },
+        {
+          "name": "close",
+          "description": "Close an issue",
+          "options": [
+            {
+              "name": ["-c", "--comment"],
+              "description": "Add a closing comment",
+              "args": {
+                "name": "text"
+              }
+            },
+            {
+              "name": ["-r", "--reason"],
+              "description": "Reason for closing",
+              "args": {
+                "name": "reason",
+                "suggestions": ["completed", "not planned"]
+              }
+            }
+          ],
+          "args": {
+            "name": "number"
+          }
+        },
+        {
+          "name": "edit",
+          "description": "Edit an issue",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "Set the title",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-b", "--body"],
+              "description": "Set the body",
+              "args": {
+                "name": "body"
+              }
+            },
+            {
+              "name": "--add-label",
+              "description": "Add labels by name",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--remove-label",
+              "description": "Remove labels by name",
+              "args": {
+                "name": "label"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--add-assignee",
+              "description": "Add assigned users by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--remove-assignee",
+              "description": "Remove assigned users by their login",
+              "args": {
+                "name": "login"
+              },
+              "isRepeatable": true
+            }
+          ],
+          "args": {
+            "name": "number"
+          }
+        },
+        {
+          "name": "reopen",
+          "description": "Reopen an issue",
+          "options": [
+            {
+              "name": ["-c", "--comment"],
+              "description": "Add a comment",
+              "args": {
+                "name": "text"
+              }
+            }
+          ],
+          "args": {
+            "name": "number"
+          }
+        }
+      ]
+    },
+    {
+      "name": "repo",
+      "description": "Manage repositories",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a new repository",
+          "options": [
+            {
+              "name": ["-d", "--description"],
+              "description": "Description of the repository",
+              "args": {
+                "name": "string"
+              }
+            },
+            {
+              "name": "--public",
+              "description": "Make the new repository public"
+            },
+            {
+              "name": "--private",
+              "description": "Make the new repository private"
+            },
+            {
+              "name": "--internal",
+              "description": "Make the new repository internal"
+            },
+            {
+              "name": "--clone",
+              "description": "Clone the new repository to the current directory"
+            },
+            {
+              "name": ["-l", "--license"],
+              "description": "Specify the open source license",
+              "args": {
+                "name": "license"
+              }
+            },
+            {
+              "name": ["-g", "--gitignore"],
+              "description": "Specify a gitignore template for the repository",
+              "args": {
+                "name": "string"
+              }
+            },
+            {
+              "name": "--source",
+              "description": "Specify path to local repository to use as source",
+              "args": {
+                "name": "path",
+                "template": "folders"
+              }
+            }
+          ],
+          "args": {
+            "name": "name",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "clone",
+          "description": "Clone a repository locally",
+          "args": {
+            "name": "repository"
+          }
+        },
+        {
+          "name": "fork",
+          "description": "Create a fork of a repository",
+          "options": [
+            {
+              "name": "--clone",
+              "description": "Clone the fork"
+            },
+            {
+              "name": "--remote",
+              "description": "Add a git remote for the fork"
+            },
+            {
+              "name": "--org",
+              "description": "Create the fork in an organization",
+              "args": {
+                "name": "organization"
+              }
+            }
+          ],
+          "args": {
+            "name": "repository",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "view",
+          "description": "View a repository",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open a repository in the browser"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ],
+          "args": {
+            "name": "repository",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "list",
+          "description": "List repositories owned by user or organization",
+          "options": [
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of repositories to list",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": "--language",
+              "description": "Filter by primary coding language",
+              "args": {
+                "name": "language"
+              }
+            },
+            {
+              "name": "--source",
+              "description": "Show only non-forks"
+            },
+            {
+              "name": "--fork",
+              "description": "Show only forks"
+            },
+            {
+              "name": "--archived",
+              "description": "Show only archived repositories"
+            },
+            {
+              "name": "--no-archived",
+              "description": "Omit archived repositories"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ],
+          "args": {
+            "name": "owner",
+            "isOptional": true
+          }
+        }
+      ]
+    },
+    {
+      "name": "auth",
+      "description": "Authenticate gh and git with GitHub",
+      "subcommands": [
+        {
+          "name": "login",
+          "description": "Authenticate with a GitHub host",
+          "options": [
+            {
+              "name": ["-h", "--hostname"],
+              "description": "The hostname of the GitHub instance to authenticate with",
+              "args": {
+                "name": "host"
+              }
+            },
+            {
+              "name": ["-p", "--git-protocol"],
+              "description": "The protocol to use for git operations",
+              "args": {
+                "name": "protocol",
+                "suggestions": ["ssh", "https"]
+              }
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open a browser to authenticate"
+            },
+            {
+              "name": "--with-token",
+              "description": "Read token from standard input"
+            },
+            {
+              "name": ["-s", "--scopes"],
+              "description": "Additional authentication scopes to request",
+              "args": {
+                "name": "scopes"
+              }
+            }
+          ]
+        },
+        {
+          "name": "logout",
+          "description": "Log out of a GitHub host",
+          "options": [
+            {
+              "name": ["-h", "--hostname"],
+              "description": "The hostname of the GitHub instance to log out of",
+              "args": {
+                "name": "host"
+              }
+            }
+          ]
+        },
+        {
+          "name": "status",
+          "description": "View authentication status",
+          "options": [
+            {
+              "name": ["-h", "--hostname"],
+              "description": "Check a specific hostname's auth status",
+              "args": {
+                "name": "host"
+              }
+            },
+            {
+              "name": ["-t", "--show-token"],
+              "description": "Display the auth token"
+            }
+          ]
+        },
+        {
+          "name": "refresh",
+          "description": "Refresh stored authentication credentials",
+          "options": [
+            {
+              "name": ["-h", "--hostname"],
+              "description": "The GitHub host to refresh credentials for",
+              "args": {
+                "name": "host"
+              }
+            },
+            {
+              "name": ["-s", "--scopes"],
+              "description": "Additional authentication scopes for the token",
+              "args": {
+                "name": "scopes"
+              }
+            }
+          ]
+        },
+        {
+          "name": "token",
+          "description": "Print the auth token gh is configured to use",
+          "options": [
+            {
+              "name": ["-h", "--hostname"],
+              "description": "The hostname of the GitHub instance authenticated with",
+              "args": {
+                "name": "host"
+              }
+            }
+          ]
+        },
+        {
+          "name": "setup-git",
+          "description": "Configure git to use GitHub CLI as a credential helper"
+        }
+      ]
+    },
+    {
+      "name": "run",
+      "description": "View details about workflow runs",
+      "subcommands": [
+        {
+          "name": "list",
+          "description": "List recent workflow runs",
+          "options": [
+            {
+              "name": ["-w", "--workflow"],
+              "description": "Filter runs by workflow",
+              "args": {
+                "name": "workflow"
+              }
+            },
+            {
+              "name": ["-b", "--branch"],
+              "description": "Filter runs by branch",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": ["-u", "--user"],
+              "description": "Filter runs by user who triggered the run",
+              "args": {
+                "name": "login"
+              }
+            },
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of runs to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": ["-s", "--status"],
+              "description": "Filter runs by status",
+              "args": {
+                "name": "status",
+                "suggestions": ["queued", "in_progress", "completed", "requested", "waiting", "action_required", "cancelled", "failure", "neutral", "skipped", "stale", "startup_failure", "success", "timed_out"]
+              }
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View a summary of a workflow run",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open run in the browser"
+            },
+            {
+              "name": "--log",
+              "description": "View full log for a run"
+            },
+            {
+              "name": "--log-failed",
+              "description": "View the log for any failed steps in a run"
+            },
+            {
+              "name": ["-j", "--job"],
+              "description": "View a specific job ID from a run",
+              "args": {
+                "name": "job-id"
+              }
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            },
+            {
+              "name": ["-v", "--verbose"],
+              "description": "Show job steps"
+            }
+          ],
+          "args": {
+            "name": "run-id",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "watch",
+          "description": "Watch a run until it completes, showing its progress",
+          "options": [
+            {
+              "name": ["-i", "--interval"],
+              "description": "Refresh interval in seconds",
+              "args": {
+                "name": "seconds"
+              }
+            },
+            {
+              "name": "--exit-status",
+              "description": "Exit with non-zero status if run fails"
+            }
+          ],
+          "args": {
+            "name": "run-id",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "download",
+          "description": "Download artifacts generated by a workflow run",
+          "options": [
+            {
+              "name": ["-D", "--dir"],
+              "description": "The directory to download artifacts into",
+              "args": {
+                "name": "directory",
+                "template": "folders"
+              }
+            },
+            {
+              "name": ["-n", "--name"],
+              "description": "Download the artifact with this name",
+              "args": {
+                "name": "name"
+              }
+            },
+            {
+              "name": ["-p", "--pattern"],
+              "description": "Download artifacts that match a glob pattern",
+              "args": {
+                "name": "pattern"
+              }
+            }
+          ],
+          "args": {
+            "name": "run-id",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "rerun",
+          "description": "Rerun a run",
+          "options": [
+            {
+              "name": "--failed",
+              "description": "Rerun only failed jobs"
+            },
+            {
+              "name": ["-j", "--job"],
+              "description": "Rerun a specific job from a run",
+              "args": {
+                "name": "job-id"
+              }
+            }
+          ],
+          "args": {
+            "name": "run-id",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "cancel",
+          "description": "Cancel a workflow run",
+          "args": {
+            "name": "run-id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "release",
+      "description": "Manage releases",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a new release",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "Release title",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-n", "--notes"],
+              "description": "Release notes",
+              "args": {
+                "name": "notes"
+              }
+            },
+            {
+              "name": ["-F", "--notes-file"],
+              "description": "Read release notes from file",
+              "args": {
+                "name": "file",
+                "template": "filepaths"
+              }
+            },
+            {
+              "name": ["-d", "--draft"],
+              "description": "Save the release as a draft"
+            },
+            {
+              "name": ["-p", "--prerelease"],
+              "description": "Mark the release as a prerelease"
+            },
+            {
+              "name": "--target",
+              "description": "Target branch or full commit SHA",
+              "args": {
+                "name": "branch"
+              }
+            },
+            {
+              "name": "--generate-notes",
+              "description": "Automatically generate title and notes for the release"
+            },
+            {
+              "name": "--latest",
+              "description": "Mark this release as Latest"
+            },
+            {
+              "name": "--discussion-category",
+              "description": "Start a discussion of the specified category",
+              "args": {
+                "name": "category"
+              }
+            }
+          ],
+          "args": {
+            "name": "tag",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "list",
+          "description": "List releases in a repository",
+          "options": [
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of items to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": "--exclude-drafts",
+              "description": "Exclude draft releases"
+            },
+            {
+              "name": "--exclude-pre-releases",
+              "description": "Exclude pre-releases"
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View information about a release",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the release in the browser"
+            },
+            {
+              "name": "--json",
+              "description": "Output JSON with the specified fields",
+              "args": {
+                "name": "fields"
+              }
+            }
+          ],
+          "args": {
+            "name": "tag",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "delete",
+          "description": "Delete a release",
+          "options": [
+            {
+              "name": ["-y", "--yes"],
+              "description": "Skip the confirmation prompt"
+            },
+            {
+              "name": "--cleanup-tag",
+              "description": "Delete the specified tag in addition to its release"
+            }
+          ],
+          "args": {
+            "name": "tag"
+          }
+        },
+        {
+          "name": "download",
+          "description": "Download release assets",
+          "options": [
+            {
+              "name": ["-D", "--dir"],
+              "description": "The directory to download files into",
+              "args": {
+                "name": "directory",
+                "template": "folders"
+              }
+            },
+            {
+              "name": ["-p", "--pattern"],
+              "description": "Download only assets that match a glob pattern",
+              "args": {
+                "name": "pattern"
+              }
+            },
+            {
+              "name": "--skip-existing",
+              "description": "Skip downloads of assets that already exist locally"
+            }
+          ],
+          "args": {
+            "name": "tag",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "upload",
+          "description": "Upload assets to a release",
+          "options": [
+            {
+              "name": "--clobber",
+              "description": "Overwrite existing assets of the same name"
+            }
+          ],
+          "args": [
+            {
+              "name": "tag"
+            },
+            {
+              "name": "files",
+              "template": "filepaths",
+              "isVariadic": true
+            }
+          ]
+        },
+        {
+          "name": "edit",
+          "description": "Edit a release",
+          "options": [
+            {
+              "name": ["-t", "--title"],
+              "description": "The title of the release",
+              "args": {
+                "name": "title"
+              }
+            },
+            {
+              "name": ["-n", "--notes"],
+              "description": "Release notes",
+              "args": {
+                "name": "notes"
+              }
+            },
+            {
+              "name": "--draft",
+              "description": "Mark as a draft"
+            },
+            {
+              "name": "--prerelease",
+              "description": "Mark as a prerelease"
+            },
+            {
+              "name": "--latest",
+              "description": "Mark as the latest release"
+            }
+          ],
+          "args": {
+            "name": "tag"
+          }
+        }
+      ]
+    },
+    {
+      "name": "api",
+      "description": "Make an authenticated GitHub API request",
+      "options": [
+        {
+          "name": ["-X", "--method"],
+          "description": "The HTTP method for the request",
+          "args": {
+            "name": "method",
+            "suggestions": ["GET", "POST", "PUT", "PATCH", "DELETE"]
+          }
+        },
+        {
+          "name": ["-H", "--header"],
+          "description": "Add a HTTP request header",
+          "args": {
+            "name": "header"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": ["-f", "--field"],
+          "description": "Add a typed parameter",
+          "args": {
+            "name": "key=value"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": ["-F", "--raw-field"],
+          "description": "Add a string parameter",
+          "args": {
+            "name": "key=value"
+          },
+          "isRepeatable": true
+        },
+        {
+          "name": "--jq",
+          "description": "Query to select values from the response using jq syntax",
+          "args": {
+            "name": "expression"
+          }
+        },
+        {
+          "name": "--paginate",
+          "description": "Make additional HTTP requests to fetch all pages of results"
+        },
+        {
+          "name": ["-i", "--include"],
+          "description": "Include HTTP response status line and headers in the output"
+        },
+        {
+          "name": "--cache",
+          "description": "Cache the response for the specified duration",
+          "args": {
+            "name": "duration"
+          }
+        }
+      ],
+      "args": {
+        "name": "endpoint"
+      }
+    },
+    {
+      "name": "gist",
+      "description": "Manage gists",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a new gist",
+          "options": [
+            {
+              "name": ["-d", "--desc"],
+              "description": "A description for this gist",
+              "args": {
+                "name": "description"
+              }
+            },
+            {
+              "name": ["-f", "--filename"],
+              "description": "Provide a filename to be used for the file read from standard input",
+              "args": {
+                "name": "filename"
+              }
+            },
+            {
+              "name": ["-p", "--public"],
+              "description": "List the gist publicly"
+            },
+            {
+              "name": ["-w", "--web"],
+              "description": "Open the browser with the created gist"
+            }
+          ],
+          "args": {
+            "name": "file",
+            "template": "filepaths",
+            "isVariadic": true,
+            "isOptional": true
+          }
+        },
+        {
+          "name": "list",
+          "description": "List your gists",
+          "options": [
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of gists to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": "--public",
+              "description": "Show only public gists"
+            },
+            {
+              "name": "--secret",
+              "description": "Show only secret gists"
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View a gist",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open gist in the browser"
+            },
+            {
+              "name": ["-f", "--filename"],
+              "description": "Display a single file from the gist",
+              "args": {
+                "name": "filename"
+              }
+            },
+            {
+              "name": "--raw",
+              "description": "Print raw instead of rendered gist contents"
+            }
+          ],
+          "args": {
+            "name": "id"
+          }
+        },
+        {
+          "name": "edit",
+          "description": "Edit one of your gists",
+          "args": {
+            "name": "id"
+          }
+        },
+        {
+          "name": "delete",
+          "description": "Delete a gist",
+          "args": {
+            "name": "id"
+          }
+        },
+        {
+          "name": "clone",
+          "description": "Clone a gist locally",
+          "args": {
+            "name": "id"
+          }
+        }
+      ]
+    },
+    {
+      "name": "workflow",
+      "description": "View details about GitHub Actions workflows",
+      "subcommands": [
+        {
+          "name": "list",
+          "description": "List workflows",
+          "options": [
+            {
+              "name": ["-L", "--limit"],
+              "description": "Maximum number of workflows to fetch",
+              "args": {
+                "name": "int"
+              }
+            },
+            {
+              "name": ["-a", "--all"],
+              "description": "Show all workflows including disabled"
+            }
+          ]
+        },
+        {
+          "name": "view",
+          "description": "View the summary of a workflow",
+          "options": [
+            {
+              "name": ["-w", "--web"],
+              "description": "Open workflow in the browser"
+            },
+            {
+              "name": ["-y", "--yaml"],
+              "description": "View the workflow yaml file"
+            }
+          ],
+          "args": {
+            "name": "workflow-id-or-name",
+            "isOptional": true
+          }
+        },
+        {
+          "name": "run",
+          "description": "Run a workflow by creating a workflow_dispatch event",
+          "options": [
+            {
+              "name": ["-r", "--ref"],
+              "description": "The branch or tag name which contains the workflow file",
+              "args": {
+                "name": "ref"
+              }
+            },
+            {
+              "name": ["-f", "--field"],
+              "description": "Add a string parameter",
+              "args": {
+                "name": "key=value"
+              },
+              "isRepeatable": true
+            },
+            {
+              "name": "--json",
+              "description": "Read workflow inputs as JSON via STDIN"
+            }
+          ],
+          "args": {
+            "name": "workflow"
+          }
+        },
+        {
+          "name": "enable",
+          "description": "Enable a workflow",
+          "args": {
+            "name": "workflow-id-or-name"
+          }
+        },
+        {
+          "name": "disable",
+          "description": "Disable a workflow",
+          "args": {
+            "name": "workflow-id-or-name"
+          }
+        }
+      ]
+    },
+    {
+      "name": "browse",
+      "description": "Open the repository in the browser",
+      "options": [
+        {
+          "name": ["-b", "--branch"],
+          "description": "Select another branch by passing in the branch name",
+          "args": {
+            "name": "branch"
+          }
+        },
+        {
+          "name": ["-n", "--no-browser"],
+          "description": "Print destination URL instead of opening the browser"
+        },
+        {
+          "name": ["-s", "--settings"],
+          "description": "Open repository settings"
+        },
+        {
+          "name": ["-p", "--projects"],
+          "description": "Open repository projects"
+        },
+        {
+          "name": ["-w", "--wiki"],
+          "description": "Open repository wiki"
+        }
+      ],
+      "args": {
+        "name": "location",
+        "isOptional": true
+      }
+    },
+    {
+      "name": "codespace",
+      "description": "Connect to and manage codespaces",
+      "subcommands": [
+        {
+          "name": "create",
+          "description": "Create a codespace"
+        },
+        {
+          "name": "list",
+          "description": "List codespaces"
+        },
+        {
+          "name": "ssh",
+          "description": "SSH into a codespace"
+        },
+        {
+          "name": "stop",
+          "description": "Stop a running codespace"
+        },
+        {
+          "name": "delete",
+          "description": "Delete codespaces"
+        },
+        {
+          "name": "code",
+          "description": "Open a codespace in Visual Studio Code"
+        }
+      ]
+    }
+  ]
+}

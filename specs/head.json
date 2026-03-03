@@ -1,0 +1,34 @@
+{
+  "name": "head",
+  "description": "Output the first part of files",
+  "options": [
+    {
+      "name": ["-n", "--lines"],
+      "description": "Print the first N lines instead of the first 10",
+      "args": {
+        "name": "count"
+      }
+    },
+    {
+      "name": ["-c", "--bytes"],
+      "description": "Print the first N bytes of each file",
+      "args": {
+        "name": "count"
+      }
+    },
+    {
+      "name": ["-q", "--quiet", "--silent"],
+      "description": "Never print headers giving file names"
+    },
+    {
+      "name": ["-v", "--verbose"],
+      "description": "Always print headers giving file names"
+    }
+  ],
+  "args": {
+    "name": "file",
+    "template": "filepaths",
+    "isVariadic": true,
+    "isOptional": true
+  }
+}
