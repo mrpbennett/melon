@@ -31,15 +31,8 @@ impl CompletionEngine {
         let spec = match self.store.get(command) {
             Some(s) => s,
             None => {
-                // No spec for this command — offer filesystem completions
-                let ctx = CompletionContext {
-                    command: command.clone(),
-                    subcommands: vec![],
-                    partial,
-                    completing_option_arg: false,
-                    cwd: ".".to_string(),
-                };
-                return PathSource.candidates(&ctx);
+                // No spec for this command — show nothing
+                return vec![];
             }
         };
 
