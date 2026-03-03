@@ -3,7 +3,7 @@
     melon
 </h1>
 
-![demo-video](assets/demo-video.mp4)
+![demo-video](assets/demo/demo.mov)
 
 ---
 
