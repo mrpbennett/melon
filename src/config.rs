@@ -8,6 +8,9 @@ pub struct Config {
     pub max_visible: Option<usize>,
     #[serde(default)]
     pub specs_dir: Option<PathBuf>,
+    /// Show a description panel to the right of the popup for the selected item.
+    #[serde(default)]
+    pub show_description_panel: Option<bool>,
 }
 
 impl Config {

@@ -22,21 +22,24 @@ pub struct Theme {
     pub min_width: usize,
     /// Maximum popup width.
     pub max_width: usize,
+    /// Show a description panel to the right of the popup for the selected item.
+    pub show_description_panel: bool,
 }
 
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            border: Color::DarkGrey,
+            border: Color::Rgb { r: 88, g: 91, b: 112 },
             bg: Color::Rgb { r: 30, g: 30, b: 46 },
             fg: Color::Rgb { r: 205, g: 214, b: 244 },
-            selected_bg: Color::Rgb { r: 69, g: 71, b: 90 },
+            selected_bg: Color::Rgb { r: 49, g: 50, b: 68 },
             selected_fg: Color::Rgb { r: 205, g: 214, b: 244 },
-            description_fg: Color::Rgb { r: 127, g: 132, b: 156 },
+            description_fg: Color::Rgb { r: 108, g: 112, b: 134 },
             match_fg: Color::Rgb { r: 137, g: 180, b: 250 },
-            max_visible: 8,
+max_visible: 8,
             min_width: 20,
             max_width: 60,
+            show_description_panel: false,
         }
     }
 }

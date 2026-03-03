@@ -182,7 +182,10 @@ pub async fn run_proxy() -> Result<i32> {
     });
 
     // === Main state machine loop ===
-    let theme = Theme::default();
+    let mut theme = Theme::default();
+    if let Some(v) = config.show_description_panel {
+        theme.show_description_panel = v;
+    }
     let max_visible = config.max_visible.unwrap_or(theme.max_visible);
     let renderer = PopupRenderer::new(theme);
     let mut popup = PopupState::new(max_visible);
@@ -240,14 +243,18 @@ pub async fn run_proxy() -> Result<i32> {
                                     }
                                 }
                                 InputAction::Passthrough(bytes) => {
-                                    // Track the current line
-                                    for &b in &bytes {
-                                        if b == b'\r' || b == b'\n' {
-                                            current_line.clear();
-                                        } else if b == 0x7f || b == 0x08 {
-                                            current_line.pop();
-                                        } else if b >= 0x20 {
-                                            current_line.push(b as char);
+                                    // Track the current line — but skip escape sequences
+                                    // (e.g. DSR responses like \x1b[24;1R, mouse events)
+                                    // so they don't corrupt our current_line state.
+                                    if bytes.first() != Some(&0x1b) {
+                                        for &b in &bytes {
+                                            if b == b'\r' || b == b'\n' {
+                                                current_line.clear();
+                                            } else if b == 0x7f || b == 0x08 {
+                                                current_line.pop();
+                                            } else if b >= 0x20 {
+                                                current_line.push(b as char);
+                                            }
                                         }
                                     }
                                     let _ = pty_tx.send(bytes).await;
