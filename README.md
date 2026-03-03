@@ -3,9 +3,7 @@
     melon
 </h1>
 
-<p align="center">
-  Warp-style terminal autocomplete that works in <em>any</em> terminal.
-</p>
+![demo-video](assets/demo-video.mp4)
 
 ---
 
@@ -49,7 +47,9 @@ Everything should work as normal — the only difference is that pressing **Tab*
 | Key               | Action           |
 | ----------------- | ---------------- |
 | `Tab` / `↓`       | Next item        |
+| `Ctrl+j`          | Next item        |
 | `Shift+Tab` / `↑` | Previous item    |
+| `Ctrl+k`          | Previous item    |
 | `Enter`           | Accept selection |
 | `Esc` / `Ctrl+C`  | Dismiss popup    |
 
@@ -102,3 +102,7 @@ melon --debug
 ## Platform
 
 macOS and Linux. Requires a Unix PTY — not compatible with Windows.
+
+## Inspiration
+
+- [https://github.com/StanMarek/ghost-complete](https://github.com/StanMarek/ghost-complete)

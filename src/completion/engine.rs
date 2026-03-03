@@ -80,8 +80,15 @@ impl CompletionEngine {
                 }
 
                 // Positional args (if they have suggestions or templates)
+                // Track which positional index we're completing based on non-option tokens already present.
+                let positional_count = remaining_tokens.iter().filter(|t| !t.text.starts_with('-')).count();
                 let args = self.get_args(subcommand_node);
-                for arg in args {
+                // Find the arg slot for the current position (last variadic arg absorbs everything beyond its index)
+                let arg_to_complete = args.iter().enumerate().find(|(i, arg)| {
+                    *i == positional_count || (arg.is_variadic && *i < positional_count)
+                }).map(|(_, arg)| arg);
+
+                if let Some(arg) = arg_to_complete {
                     // Static suggestions
                     for suggestion in &arg.suggestions {
                         match suggestion {
@@ -383,6 +390,19 @@ mod tests {
         let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"-m"));
         assert!(names.contains(&"--message"));
+    }
+
+    #[test]
+    fn test_no_completions_after_non_template_arg() {
+        // `git clone ` — positional 0 is "repository" with no template/suggestions.
+        // Should return empty (no OS directories).
+        let engine = CompletionEngine::new(test_store());
+        let candidates = engine.complete("git clone ");
+        let file_candidates: Vec<&str> = candidates.iter()
+            .filter(|c| matches!(c.kind, CandidateKind::File | CandidateKind::Folder))
+            .map(|c| c.name.as_str())
+            .collect();
+        assert!(file_candidates.is_empty(), "should not offer filesystem completions at position 0 of clone");
     }
 
     #[test]
