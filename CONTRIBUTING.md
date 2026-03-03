@@ -13,7 +13,7 @@ For a deep dive into the codebase — architecture, module breakdown, and key de
 ## Getting Started
 
 ```bash
-git clone https://github.com/your-org/melon.git
+git clone https://github.com/mrpbennett/melon.git
 cd melon
 cargo build
 cargo test
@@ -68,6 +68,7 @@ See `specs/git.json` for a reference example.
 ## Reporting Issues
 
 Open a GitHub issue with:
+
 - Your OS and shell (`echo $SHELL`, `uname -a`)
 - Steps to reproduce
 - Relevant output from `cargo run -- --debug` (log at `~/.local/share/melon/melon.log`)
