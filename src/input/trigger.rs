@@ -76,9 +76,11 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
                     _ => {}
                 }
             }
-            // Pass through other escape sequences
+            // Pass through other CSI escape sequences.
+            // CSI sequences: ESC [ (parameter bytes 0x30-0x3F)* (intermediate bytes 0x20-0x2F)* (final byte 0x40-0x7E)
+            // Mouse sequences (SGR: ESC[<...M/m) can be very long, so don't cap the scan length.
             let mut end = 2;
-            while end < buf.len() && end < 8 {
+            while end < buf.len() {
                 if buf[end] >= 0x40 && buf[end] <= 0x7E {
                     end += 1;
                     break;
