@@ -23,6 +23,10 @@ pub enum InputAction {
     CtrlC,
     /// Ctrl-Z — suspend.
     CtrlZ,
+    /// Ctrl-J — move down in popup (or passthrough as LF in passthrough mode).
+    CtrlJ,
+    /// Ctrl-K — move up in popup (or passthrough in passthrough mode).
+    CtrlK,
 }
 
 /// Parse raw input bytes into an InputAction.
@@ -70,9 +74,19 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
         return (InputAction::Passthrough(buf[..len].to_vec()), len);
     }
 
-    // Enter
-    if buf[0] == 0x0d || buf[0] == 0x0a {
+    // Enter (CR only; LF/0x0a is Ctrl-J and handled separately)
+    if buf[0] == 0x0d {
         return (InputAction::Enter, 1);
+    }
+
+    // Ctrl-J (LF) — navigate down in popup
+    if buf[0] == 0x0a {
+        return (InputAction::CtrlJ, 1);
+    }
+
+    // Ctrl-K (VT) — navigate up in popup
+    if buf[0] == 0x0b {
+        return (InputAction::CtrlK, 1);
     }
 
     // Backspace (0x7f or 0x08)
