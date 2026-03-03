@@ -1,9 +1,8 @@
 <h1 align="center">
-    <img src="assets/imgs/melon-logo.png" width="200" alt="Logo"/><br/>
-    melon
+    <img src="assets/imgs/melon-logo.png" width="200" alt="Logo"/>
 </h1>
 
-![demo-video](assets/demo/demo.mov)
+[![demo-video](assets/demo/demo.mov)](https://github.com/user-attachments/assets/dec0371d-532d-4153-9fa9-56d3c3188dd0)
 
 ---
 
