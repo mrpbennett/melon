@@ -138,7 +138,11 @@ mod tests {
         ScoredCandidate {
             candidate: CompletionCandidate {
                 name: name.to_string(),
+                insert_value: None,
+                display_name: None,
                 description: None,
+                icon: None,
+                priority: 50,
                 kind: CandidateKind::Subcommand,
             },
             score: 100,

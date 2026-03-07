@@ -1,3 +1,4 @@
+use super::generator::{suggestion_candidates, GeneratorContext, GeneratorSource};
 use super::loader::SpecStore;
 use super::source::{CompletionContext, CompletionSource, PathSource};
 use super::spec::*;
@@ -9,6 +10,7 @@ pub struct CompletionEngine {
     store: SpecStore,
     command_candidates: Vec<CompletionCandidate>,
     path_source: PathSource,
+    generator_source: GeneratorSource,
     cached_context: Option<CachedCompletion>,
 }
 
@@ -43,6 +45,7 @@ struct ResolvedContext<'a> {
     key: CompletionCacheKey,
     kind: ResolvedKind<'a>,
     path_context: Option<CompletionContext>,
+    generator_context: Option<ResolvedGeneratorContext<'a>>,
 }
 
 enum ResolvedKind<'a> {
@@ -59,15 +62,38 @@ enum ResolvedKind<'a> {
     },
 }
 
+struct ResolvedGeneratorContext<'a> {
+    arg: &'a Arg,
+    context: GeneratorContext,
+}
+
+struct CandidateMetadata<'a> {
+    names: &'a StringOrArray,
+    description: &'a Option<String>,
+    display_name: &'a Option<String>,
+    icon: &'a Option<String>,
+    insert_value: &'a Option<String>,
+    priority: Option<i32>,
+}
+
 impl CompletionEngine {
     pub fn new(store: SpecStore) -> Self {
         let mut command_candidates: Vec<CompletionCandidate> = store
             .iter_commands()
             .filter_map(|command| {
-                store.get(command).map(|spec| CompletionCandidate {
-                    name: command.to_string(),
-                    description: spec.description.clone(),
-                    kind: CandidateKind::Subcommand,
+                store.get(command).map(|spec| {
+                    Self::named_candidate(
+                        command,
+                        CandidateMetadata {
+                            names: &spec.name,
+                            description: &spec.description,
+                            display_name: &spec.display_name,
+                            icon: &spec.icon,
+                            insert_value: &spec.insert_value,
+                            priority: spec.priority,
+                        },
+                        CandidateKind::Subcommand,
+                    )
                 })
             })
             .collect();
@@ -77,6 +103,7 @@ impl CompletionEngine {
             store,
             command_candidates,
             path_source: PathSource::default(),
+            generator_source: GeneratorSource::default(),
             cached_context: None,
         }
     }
@@ -123,6 +150,13 @@ impl CompletionEngine {
             candidates.extend(self.path_source.candidates(path_context));
         }
 
+        if let Some(generator_context) = &resolved.generator_context {
+            candidates.extend(
+                self.generator_source
+                    .candidates(generator_context.arg, &generator_context.context),
+            );
+        }
+
         candidates
     }
 
@@ -140,6 +174,7 @@ impl CompletionEngine {
                 },
                 kind: ResolvedKind::CommandName,
                 path_context: None,
+                generator_context: None,
             });
         }
 
@@ -161,12 +196,14 @@ impl CompletionEngine {
                 },
                 kind: ResolvedKind::Options(subcommand_node),
                 path_context: None,
+                generator_context: None,
             });
         }
 
         if let Some(option_token) = remaining_tokens.last().filter(|token| {
             token.text.starts_with('-') && Self::option_takes_arg(subcommand_node, &token.text)
         }) {
+            let option_arg = Self::option_arg(subcommand_node, option_token.text.as_str());
             return Some(ResolvedContext {
                 key: CompletionCacheKey {
                     command: Some(command.to_string()),
@@ -182,14 +219,14 @@ impl CompletionEngine {
                     node: subcommand_node,
                     option_name: option_token.text.as_str(),
                 },
-                path_context: Self::option_arg_path_context(
-                    subcommand_node,
-                    option_token.text.as_str(),
-                    partial,
-                    command,
-                    &subcommand_chain,
-                    cwd,
-                ),
+                path_context: option_arg
+                    .filter(|arg| Self::arg_uses_path_templates(arg))
+                    .map(|_| {
+                        Self::make_path_context(command, &subcommand_chain, partial, true, cwd)
+                    }),
+                generator_context: option_arg.and_then(|arg| {
+                    Self::make_generator_context(arg, parsed, command, &subcommand_chain, cwd, true)
+                }),
             });
         }
 
@@ -216,13 +253,20 @@ impl CompletionEngine {
                 positional_index,
                 include_options,
             },
-            path_context: Self::positional_path_context(
-                subcommand_node,
-                positional_index,
-                partial,
-                command,
-                &subcommand_chain,
-                cwd,
+            path_context: Self::positional_arg(subcommand_node, positional_index)
+                .filter(|arg| Self::arg_uses_path_templates(arg))
+                .map(|_| Self::make_path_context(command, &subcommand_chain, partial, false, cwd)),
+            generator_context: Self::positional_arg(subcommand_node, positional_index).and_then(
+                |arg| {
+                    Self::make_generator_context(
+                        arg,
+                        parsed,
+                        command,
+                        &subcommand_chain,
+                        cwd,
+                        false,
+                    )
+                },
             ),
         })
     }
@@ -285,11 +329,18 @@ impl CompletionEngine {
                 continue;
             }
             for name in opt.name.iter() {
-                candidates.push(CompletionCandidate {
-                    name: name.to_string(),
-                    description: opt.description.clone(),
-                    kind: CandidateKind::Option,
-                });
+                candidates.push(Self::named_candidate(
+                    name,
+                    CandidateMetadata {
+                        names: &opt.name,
+                        description: &opt.description,
+                        display_name: &opt.display_name,
+                        icon: &opt.icon,
+                        insert_value: &opt.insert_value,
+                        priority: opt.priority,
+                    },
+                    CandidateKind::Option,
+                ));
             }
         }
         candidates.sort_by(|a, b| a.name.cmp(&b.name));
@@ -314,17 +365,7 @@ impl CompletionEngine {
 
             let mut candidates = Vec::new();
             for suggestion in &arg.suggestions {
-                let (name, desc) = match suggestion {
-                    SuggestionOrString::String(value) => (value.clone(), None),
-                    SuggestionOrString::Suggestion(value) => {
-                        (value.name.primary().to_string(), value.description.clone())
-                    }
-                };
-                candidates.push(CompletionCandidate {
-                    name,
-                    description: desc,
-                    kind: CandidateKind::Argument,
-                });
+                candidates.extend(suggestion_candidates(suggestion, CandidateKind::Argument));
             }
             return candidates;
         }
@@ -344,11 +385,18 @@ impl CompletionEngine {
                 continue;
             }
             for name in subcommand.name.iter() {
-                candidates.push(CompletionCandidate {
-                    name: name.to_string(),
-                    description: subcommand.description.clone(),
-                    kind: CandidateKind::Subcommand,
-                });
+                candidates.push(Self::named_candidate(
+                    name,
+                    CandidateMetadata {
+                        names: &subcommand.name,
+                        description: &subcommand.description,
+                        display_name: &subcommand.display_name,
+                        icon: &subcommand.icon,
+                        insert_value: &subcommand.insert_value,
+                        priority: subcommand.priority,
+                    },
+                    CandidateKind::Subcommand,
+                ));
             }
         }
 
@@ -361,27 +409,7 @@ impl CompletionEngine {
 
         if let Some(arg) = arg_to_complete {
             for suggestion in &arg.suggestions {
-                match suggestion {
-                    SuggestionOrString::String(value) => {
-                        candidates.push(CompletionCandidate {
-                            name: value.clone(),
-                            description: None,
-                            kind: CandidateKind::Argument,
-                        });
-                    }
-                    SuggestionOrString::Suggestion(value) => {
-                        if value.hidden {
-                            continue;
-                        }
-                        for name in value.name.iter() {
-                            candidates.push(CompletionCandidate {
-                                name: name.to_string(),
-                                description: value.description.clone(),
-                                kind: CandidateKind::Argument,
-                            });
-                        }
-                    }
-                }
+                candidates.extend(suggestion_candidates(suggestion, CandidateKind::Argument));
             }
         }
 
@@ -390,57 +418,38 @@ impl CompletionEngine {
                 if opt.hidden {
                     continue;
                 }
-                candidates.push(CompletionCandidate {
-                    name: opt.name.preferred().to_string(),
-                    description: opt.description.clone(),
-                    kind: CandidateKind::Option,
-                });
+                candidates.push(Self::named_candidate(
+                    opt.name.preferred(),
+                    CandidateMetadata {
+                        names: &opt.name,
+                        description: &opt.description,
+                        display_name: &opt.display_name,
+                        icon: &opt.icon,
+                        insert_value: &opt.insert_value,
+                        priority: opt.priority,
+                    },
+                    CandidateKind::Option,
+                ));
             }
         }
 
         candidates
     }
 
-    fn option_arg_path_context(
-        node: SpecNode<'_>,
-        option_name: &str,
-        partial: &str,
-        command: &str,
-        subcommands: &[&str],
-        cwd: &str,
-    ) -> Option<CompletionContext> {
-        for opt in Self::get_options(node) {
-            if opt.name.contains(option_name)
-                && opt.args.first().is_some_and(Self::arg_uses_path_templates)
-            {
-                return Some(Self::make_path_context(
-                    command,
-                    subcommands,
-                    partial,
-                    true,
-                    cwd,
-                ));
-            }
-        }
-        None
+    fn option_arg<'a>(node: SpecNode<'a>, option_name: &str) -> Option<&'a Arg> {
+        Self::get_options(node)
+            .iter()
+            .find(|opt| opt.name.contains(option_name))
+            .and_then(|opt| opt.args.first())
     }
 
-    fn positional_path_context(
-        node: SpecNode<'_>,
-        positional_index: usize,
-        partial: &str,
-        command: &str,
-        subcommands: &[&str],
-        cwd: &str,
-    ) -> Option<CompletionContext> {
+    fn positional_arg(node: SpecNode<'_>, positional_index: usize) -> Option<&Arg> {
         Self::get_args(node)
             .enumerate()
             .find(|(index, arg)| {
                 *index == positional_index || (arg.is_variadic && *index < positional_index)
             })
             .map(|(_, arg)| arg)
-            .filter(|arg| Self::arg_uses_path_templates(arg))
-            .map(|_| Self::make_path_context(command, subcommands, partial, false, cwd))
     }
 
     fn make_path_context(
@@ -462,6 +471,38 @@ impl CompletionEngine {
         }
     }
 
+    fn make_generator_context<'a>(
+        arg: &'a Arg,
+        parsed: &ParsedLine,
+        command: &str,
+        subcommands: &[&str],
+        cwd: &str,
+        completing_option_arg: bool,
+    ) -> Option<ResolvedGeneratorContext<'a>> {
+        if arg.generators.is_empty() {
+            return None;
+        }
+
+        Some(ResolvedGeneratorContext {
+            arg,
+            context: GeneratorContext {
+                command: command.to_string(),
+                subcommands: subcommands
+                    .iter()
+                    .map(|value| (*value).to_string())
+                    .collect(),
+                tokens: parsed
+                    .tokens
+                    .iter()
+                    .map(|token| token.text.clone())
+                    .collect(),
+                partial: parsed.partial.clone(),
+                completing_option_arg,
+                cwd: cwd.to_string(),
+            },
+        })
+    }
+
     fn arg_uses_path_templates(arg: &Arg) -> bool {
         match &arg.template {
             Some(Template::Single(kind)) => {
@@ -471,6 +512,24 @@ impl CompletionEngine {
                 .iter()
                 .any(|kind| matches!(kind, TemplateKind::Filepaths | TemplateKind::Folders)),
             None => false,
+        }
+    }
+
+    fn named_candidate(
+        active_name: &str,
+        metadata: CandidateMetadata<'_>,
+        kind: CandidateKind,
+    ) -> CompletionCandidate {
+        CompletionCandidate {
+            name: active_name.to_string(),
+            insert_value: metadata.insert_value.clone(),
+            display_name: (active_name == metadata.names.preferred())
+                .then(|| metadata.display_name.clone())
+                .flatten(),
+            description: metadata.description.clone(),
+            icon: metadata.icon.clone(),
+            priority: metadata.priority.unwrap_or(DEFAULT_CANDIDATE_PRIORITY),
+            kind,
         }
     }
 
@@ -511,15 +570,35 @@ mod tests {
         let git_spec = r#"{
             "name": "git",
             "description": "Version control",
+            "displayName": "Git 🌿",
+            "icon": "🌿",
             "subcommands": [
                 {"name": "commit", "description": "Record changes",
+                 "displayName": "Commit ✍️",
+                 "icon": "✍️",
+                 "insertValue": "commit --verbose",
+                 "priority": 90,
                  "options": [
                     {"name": ["-m", "--message"], "description": "Commit message",
-                     "args": {"name": "message"}}
+                     "displayName": "Message 💬",
+                     "icon": "💬",
+                     "insertValue": "--message",
+                     "priority": 75,
+                     "args": {"name": "message", "suggestions": [
+                        {"name": "feat", "insertValue": "feat: {cursor}", "priority": 88}
+                     ]}}
                  ]},
                 {"name": "compare", "description": "Compare branches"},
                 {"name": "clone", "description": "Clone a repository"},
                 {"name": "checkout", "description": "Switch branches",
+                 "args": {
+                    "name": "branch",
+                    "generators": {
+                        "script": "printf 'main\\nrelease\\n'",
+                        "splitOn": "\n",
+                        "scriptTimeout": 500
+                    }
+                 },
                  "options": [
                     {"name": "-b", "description": "Create and checkout new branch"}
                  ]},
@@ -590,5 +669,57 @@ mod tests {
         assert!(names.contains(&"commit"));
         assert!(names.contains(&"clone"));
         assert!(names.contains(&"checkout"));
+    }
+
+    #[test]
+    fn test_complete_candidates_preserve_display_metadata() {
+        let mut engine = CompletionEngine::new(test_store());
+        let commit = engine
+            .complete("git com", ".")
+            .candidates
+            .into_iter()
+            .find(|candidate| candidate.name == "commit")
+            .unwrap();
+        assert_eq!(commit.display_name.as_deref(), Some("Commit ✍️"));
+        assert_eq!(commit.icon.as_deref(), Some("✍️"));
+        assert_eq!(commit.insert_value.as_deref(), Some("commit --verbose"));
+        assert_eq!(commit.priority, 90);
+
+        let root = engine
+            .complete("", ".")
+            .candidates
+            .into_iter()
+            .find(|candidate| candidate.name == "git")
+            .unwrap();
+        assert_eq!(root.display_name.as_deref(), Some("Git 🌿"));
+        assert_eq!(root.icon.as_deref(), Some("🌿"));
+    }
+
+    #[test]
+    fn test_complete_option_arg_preserves_insert_value_and_priority() {
+        let mut engine = CompletionEngine::new(test_store());
+        let candidate = engine
+            .complete("git commit -m ", ".")
+            .candidates
+            .into_iter()
+            .find(|candidate| candidate.name == "feat")
+            .unwrap();
+
+        assert_eq!(candidate.insert_value.as_deref(), Some("feat: {cursor}"));
+        assert_eq!(candidate.priority, 88);
+    }
+
+    #[test]
+    fn test_complete_positional_runs_generators() {
+        let mut engine = CompletionEngine::new(test_store());
+        let names: Vec<String> = engine
+            .complete("git checkout ", ".")
+            .candidates
+            .into_iter()
+            .map(|candidate| candidate.name)
+            .collect();
+
+        assert!(names.contains(&"main".to_string()));
+        assert!(names.contains(&"release".to_string()));
     }
 }

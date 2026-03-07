@@ -48,6 +48,38 @@
 - Completion acceptance now replaces the token around the cursor, avoids clobbering text outside that token, and only appends a trailing space when the inserted completion ends at the buffer boundary and is not a folder.
 - Verification passed with `cargo fmt --all`, `cargo test -q`, `cargo clippy -q`, `MELON_BENCH_ITERS=1000 cargo bench --bench perf`, and an install-snippet sanity check via `cargo run -q -- --install`.
 
+## Emoji/Icon Pass
+- [x] Confirm how Fig encodes emoji and icon metadata in specs and map the relevant subset onto Melon's JSON/spec model.
+- [x] Extend Melon's spec structs and completion candidates to preserve `icon` and `displayName` metadata for subcommands, options, and suggestions.
+- [x] Render terminal-safe icons in the popup, including direct emoji strings and sensible fallbacks for `fig://icon?...` and URL values.
+- [x] Verify with focused unit tests plus `cargo test -q`, `cargo clippy -q`, and a manual sanity check of rendered output behavior.
+
+### Emoji/Icon Pass Review
+- Fig treats `Suggestion` as the shared UI base type, and `Subcommand`/`Option` inherit `icon` and `displayName`. The docs also show `icon` accepts a single-character string, an emoji, a URL, or `fig://icon?...`.
+- The `withfig/autocomplete` `git` spec uses both direct emoji icons (`⭐️`, `🏷️`) and `fig://icon?...` values in generated suggestions, so Melon now preserves both forms at the candidate level.
+- Melon now deserializes `displayName` and `icon` on command specs, subcommands, options, and structured suggestions, then carries them through the completion engine into popup rendering.
+- The terminal renderer uses raw emoji icons verbatim, maps common `fig://icon?...` types to terminal-safe glyphs, falls back to generic icons for unknown protocols, and displays `displayName` without changing the inserted `name`.
+- Limitation: Melon's static JSON conversion still strips generator functions, so dynamic Fig generator output is not imported from upstream specs. The renderer and candidate model now support those icon values if a future runtime data source emits them.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+## Fig Metadata Pass
+- [x] Preserve Fig `insertValue` and `priority` metadata in the Rust spec model and completion candidates.
+- [x] Use `insertValue` during completion acceptance and `priority` during ranking/tie-breaking.
+- [x] Add a serializable generator runtime for JSON specs, including command execution, caching, and terminal-safe output mapping.
+- [x] Teach `tools/convert_specs.ts` to preserve the supported generator subset instead of dropping it outright.
+- [x] Verify with focused tests plus `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Fig Metadata Notes
+- Scope the generator work to a serializable subset that can round-trip through JSON: string `script`, `splitOn`, `scriptTimeout`, string `trigger`, simple cache metadata, and fixed output field mapping.
+- Function-based Fig features such as `script(tokens)`, `postProcess`, `custom`, function-valued `trigger`, and `getQueryTerm` remain out of scope until Melon has a JS runtime or dedicated reimplementation.
+
+### Fig Metadata Review
+- Melon now preserves `insertValue` and `priority` on commands, subcommands, options, and structured suggestions, then uses them for popup ordering and insertion.
+- Completion acceptance now parses Fig-style `insertValue` strings, including `{cursor}` cursor placement and backspace/newline control characters, before emitting PTY edits.
+- Added a generator source that executes serializable command generators with `splitOn`, `scriptTimeout`, string `trigger`, cache metadata, and path-template fallback. Generator stdout can also be JSON arrays of Fig-style suggestions, which lets dynamic candidates carry icons, descriptions, `insertValue`, and `priority`.
+- `tools/convert_specs.ts` now preserves serializable `generators` and string `trigger` data instead of discarding those keys up front; unsupported function-valued hooks are still stripped.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
 ## Phase 1: PTY Proxy Skeleton ✅
 - [x] `cargo init`, add dependencies (Cargo.toml)
 - [x] `pty/proxy.rs` — spawn $SHELL in PTY, raw mode, async stdin↔PTY proxy

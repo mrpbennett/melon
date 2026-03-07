@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+pub const DEFAULT_CANDIDATE_PRIORITY: i32 = 50;
+
 /// Top-level completion specification for a command.
 /// Mirrors the Fig autocomplete Spec type.
 #[derive(Debug, Clone, Deserialize)]
@@ -8,6 +10,14 @@ pub struct Spec {
     pub name: StringOrArray,
     #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
+    pub insert_value: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i32>,
     #[serde(default)]
     pub subcommands: Vec<Subcommand>,
     #[serde(default)]
@@ -23,6 +33,14 @@ pub struct Subcommand {
     pub name: StringOrArray,
     #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
+    pub insert_value: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i32>,
     #[serde(default)]
     pub subcommands: Vec<Subcommand>,
     #[serde(default)]
@@ -40,6 +58,14 @@ pub struct Opt {
     pub name: StringOrArray,
     #[serde(default)]
     pub description: Option<String>,
+    #[serde(default)]
+    pub insert_value: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
+    pub icon: Option<String>,
+    #[serde(default)]
+    pub priority: Option<i32>,
     #[serde(default)]
     pub args: ArgOrArgs,
     /// If true, this is a persistent/global option inherited by subcommands.
@@ -69,6 +95,9 @@ pub struct Arg {
     /// Static suggestions for this argument.
     #[serde(default)]
     pub suggestions: Vec<SuggestionOrString>,
+    /// Dynamic suggestion generators for this argument.
+    #[serde(default)]
+    pub generators: GeneratorOrGenerators,
     /// Template for special argument types.
     #[serde(default)]
     pub template: Option<Template>,
@@ -98,9 +127,119 @@ pub struct Suggestion {
     #[serde(default)]
     pub description: Option<String>,
     #[serde(default)]
+    pub insert_value: Option<String>,
+    #[serde(default)]
+    pub display_name: Option<String>,
+    #[serde(default)]
     pub icon: Option<String>,
     #[serde(default)]
+    pub priority: Option<i32>,
+    #[serde(default)]
     pub hidden: bool,
+}
+
+/// Generators can be a single object, an array, or absent.
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(untagged)]
+pub enum GeneratorOrGenerators {
+    #[default]
+    None,
+    Single(Generator),
+    Multiple(Vec<Generator>),
+}
+
+impl GeneratorOrGenerators {
+    pub fn iter(&self) -> GeneratorOrGeneratorsIter<'_> {
+        match self {
+            GeneratorOrGenerators::None => GeneratorOrGeneratorsIter::None,
+            GeneratorOrGenerators::Single(generator) => {
+                GeneratorOrGeneratorsIter::Single(Some(generator))
+            }
+            GeneratorOrGenerators::Multiple(generators) => {
+                GeneratorOrGeneratorsIter::Multiple(generators.iter())
+            }
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self, GeneratorOrGenerators::None)
+    }
+}
+
+pub enum GeneratorOrGeneratorsIter<'a> {
+    None,
+    Single(Option<&'a Generator>),
+    Multiple(std::slice::Iter<'a, Generator>),
+}
+
+impl<'a> Iterator for GeneratorOrGeneratorsIter<'a> {
+    type Item = &'a Generator;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            GeneratorOrGeneratorsIter::None => None,
+            GeneratorOrGeneratorsIter::Single(value) => value.take(),
+            GeneratorOrGeneratorsIter::Multiple(iter) => iter.next(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Generator {
+    #[serde(default)]
+    pub template: Option<Template>,
+    #[serde(default)]
+    pub script: Option<GeneratorScript>,
+    #[serde(default)]
+    pub script_timeout: Option<u64>,
+    #[serde(default)]
+    pub split_on: Option<String>,
+    #[serde(default)]
+    pub trigger: Option<GeneratorTrigger>,
+    #[serde(default)]
+    pub cache: Option<GeneratorCache>,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum GeneratorScript {
+    Single(String),
+    Multiple(Vec<String>),
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged)]
+pub enum GeneratorTrigger {
+    Literal(String),
+}
+
+impl GeneratorTrigger {
+    pub fn as_str(&self) -> &str {
+        match self {
+            GeneratorTrigger::Literal(value) => value,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GeneratorCache {
+    #[serde(default)]
+    pub strategy: Option<GeneratorCacheStrategy>,
+    #[serde(default)]
+    pub ttl: Option<u64>,
+    #[serde(default)]
+    pub cache_by_directory: bool,
+    #[serde(default)]
+    pub cache_key: Option<String>,
+}
+
+#[derive(Debug, Clone, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "kebab-case")]
+pub enum GeneratorCacheStrategy {
+    MaxAge,
+    StaleWhileRevalidate,
 }
 
 /// Template types for special completion sources.
@@ -117,6 +256,7 @@ pub enum TemplateKind {
     Filepaths,
     Folders,
     History,
+    Help,
 }
 
 /// A name field can be a single string or an array of aliases.
@@ -179,7 +319,7 @@ impl<'a> Iterator for StringOrArrayIter<'a> {
 pub enum ArgOrArgs {
     #[default]
     None,
-    Single(Arg),
+    Single(Box<Arg>),
     Multiple(Vec<Arg>),
 }
 
@@ -187,7 +327,7 @@ impl ArgOrArgs {
     pub fn iter(&self) -> ArgOrArgsIter<'_> {
         match self {
             ArgOrArgs::None => ArgOrArgsIter::None,
-            ArgOrArgs::Single(arg) => ArgOrArgsIter::Single(Some(arg)),
+            ArgOrArgs::Single(arg) => ArgOrArgsIter::Single(Some(arg.as_ref())),
             ArgOrArgs::Multiple(args) => ArgOrArgsIter::Multiple(args.iter()),
         }
     }
@@ -195,7 +335,7 @@ impl ArgOrArgs {
     pub fn first(&self) -> Option<&Arg> {
         match self {
             ArgOrArgs::None => None,
-            ArgOrArgs::Single(arg) => Some(arg),
+            ArgOrArgs::Single(arg) => Some(arg.as_ref()),
             ArgOrArgs::Multiple(args) => args.first(),
         }
     }
@@ -232,10 +372,28 @@ impl<'a> Iterator for ArgOrArgsIter<'a> {
 pub struct CompletionCandidate {
     /// The text to insert.
     pub name: String,
+    /// Optional inserted text when it differs from the match/filter name.
+    pub insert_value: Option<String>,
+    /// Optional display label while keeping `name` as the inserted value.
+    pub display_name: Option<String>,
     /// Optional display description.
     pub description: Option<String>,
+    /// Optional icon metadata from the spec.
+    pub icon: Option<String>,
+    /// Rank hint from the completion spec.
+    pub priority: i32,
     /// Type of completion for icon/styling.
     pub kind: CandidateKind,
+}
+
+impl CompletionCandidate {
+    pub fn display_label(&self) -> &str {
+        self.display_name.as_deref().unwrap_or(&self.name)
+    }
+
+    pub fn insert_text(&self) -> &str {
+        self.insert_value.as_deref().unwrap_or(&self.name)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -256,14 +414,26 @@ mod tests {
         let json = r#"{
             "name": "git",
             "description": "The version control system",
+            "insertValue": "git",
+            "displayName": "Git 🌿",
+            "icon": "🌿",
+            "priority": 77,
             "subcommands": [
                 {
                     "name": ["commit", "ci"],
                     "description": "Record changes to the repository",
+                    "insertValue": "commit --verbose",
+                    "displayName": "Commit ✍️",
+                    "icon": "✍️",
+                    "priority": 82,
                     "options": [
                         {
                             "name": ["-m", "--message"],
                             "description": "Commit message",
+                            "insertValue": "--message",
+                            "displayName": "Message 💬",
+                            "icon": "💬",
+                            "priority": 66,
                             "args": {
                                 "name": "message"
                             }
@@ -287,11 +457,35 @@ mod tests {
         assert_eq!(spec.name.primary(), "git");
         assert_eq!(spec.subcommands.len(), 1);
         assert_eq!(spec.subcommands[0].name.primary(), "commit");
+        assert_eq!(spec.insert_value.as_deref(), Some("git"));
+        assert_eq!(spec.priority, Some(77));
+        assert_eq!(spec.display_name.as_deref(), Some("Git 🌿"));
+        assert_eq!(spec.icon.as_deref(), Some("🌿"));
+        assert_eq!(
+            spec.subcommands[0].insert_value.as_deref(),
+            Some("commit --verbose")
+        );
+        assert_eq!(spec.subcommands[0].priority, Some(82));
+        assert_eq!(
+            spec.subcommands[0].display_name.as_deref(),
+            Some("Commit ✍️")
+        );
+        assert_eq!(spec.subcommands[0].icon.as_deref(), Some("✍️"));
         assert_eq!(
             spec.subcommands[0].name.iter().collect::<Vec<_>>(),
             vec!["commit", "ci"]
         );
         assert_eq!(spec.subcommands[0].options.len(), 2);
+        assert_eq!(
+            spec.subcommands[0].options[0].display_name.as_deref(),
+            Some("Message 💬")
+        );
+        assert_eq!(
+            spec.subcommands[0].options[0].insert_value.as_deref(),
+            Some("--message")
+        );
+        assert_eq!(spec.subcommands[0].options[0].priority, Some(66));
+        assert_eq!(spec.subcommands[0].options[0].icon.as_deref(), Some("💬"));
         assert_eq!(spec.options.len(), 1);
     }
 
@@ -323,7 +517,14 @@ mod tests {
                 "suggestions": [
                     "yes",
                     "no",
-                    {"name": "maybe", "description": "Perhaps"}
+                    {
+                        "name": "maybe",
+                        "description": "Perhaps",
+                        "insertValue": "maybe?",
+                        "displayName": "Maybe 🤔",
+                        "icon": "🤔",
+                        "priority": 61
+                    }
                 ]
             }
         }"#;
@@ -331,5 +532,69 @@ mod tests {
         let spec: Spec = serde_json::from_str(json).unwrap();
         let args = spec.args.as_slice();
         assert_eq!(args[0].suggestions.len(), 3);
+        let SuggestionOrString::Suggestion(suggestion) = &args[0].suggestions[2] else {
+            panic!("expected structured suggestion");
+        };
+        assert_eq!(suggestion.display_name.as_deref(), Some("Maybe 🤔"));
+        assert_eq!(suggestion.icon.as_deref(), Some("🤔"));
+        assert_eq!(suggestion.insert_value.as_deref(), Some("maybe?"));
+        assert_eq!(suggestion.priority, Some(61));
+    }
+
+    #[test]
+    fn test_deserialize_generators() {
+        let json = r#"{
+            "name": "git",
+            "subcommands": [
+                {
+                    "name": "checkout",
+                    "args": {
+                        "name": "branch",
+                        "generators": [
+                            {
+                                "script": "git branch --format='%(refname:short)'",
+                                "splitOn": "\n",
+                                "scriptTimeout": 250,
+                                "trigger": "/",
+                                "cache": {
+                                    "strategy": "max-age",
+                                    "ttl": 5000,
+                                    "cacheByDirectory": true,
+                                    "cacheKey": "git-branches"
+                                }
+                            },
+                            {
+                                "template": "folders"
+                            }
+                        ]
+                    }
+                }
+            ]
+        }"#;
+
+        let spec: Spec = serde_json::from_str(json).unwrap();
+        let args = spec.subcommands[0].args.as_slice();
+        let generators: Vec<&Generator> = args[0].generators.iter().collect();
+        assert_eq!(generators.len(), 2);
+        assert!(matches!(
+            generators[0].script,
+            Some(GeneratorScript::Single(ref script))
+                if script == "git branch --format='%(refname:short)'"
+        ));
+        assert_eq!(generators[0].split_on.as_deref(), Some("\n"));
+        assert_eq!(generators[0].script_timeout, Some(250));
+        assert_eq!(
+            generators[0].trigger.as_ref().map(GeneratorTrigger::as_str),
+            Some("/")
+        );
+        let cache = generators[0].cache.as_ref().unwrap();
+        assert_eq!(cache.strategy, Some(GeneratorCacheStrategy::MaxAge));
+        assert_eq!(cache.ttl, Some(5000));
+        assert!(cache.cache_by_directory);
+        assert_eq!(cache.cache_key.as_deref(), Some("git-branches"));
+        assert!(matches!(
+            generators[1].template,
+            Some(Template::Single(TemplateKind::Folders))
+        ));
     }
 }

@@ -23,40 +23,39 @@ impl FuzzyMatcher {
         pattern: &str,
         candidates: Vec<CompletionCandidate>,
     ) -> Vec<ScoredCandidate> {
-        if pattern.is_empty() {
-            // No filtering needed — return all with equal score
-            return candidates
-                .into_iter()
-                .map(|c| ScoredCandidate {
-                    candidate: c,
-                    score: 0,
-                })
-                .collect();
-        }
-
-        let pat = Pattern::new(
-            pattern,
-            CaseMatching::Smart,
-            Normalization::Smart,
-            AtomKind::Fuzzy,
-        );
         let mut scored = Vec::with_capacity(candidates.len());
-        let mut utf32_buf = Vec::new();
-        for candidate in candidates {
-            utf32_buf.clear();
-            let haystack = Utf32Str::new(&candidate.name, &mut utf32_buf);
-            if let Some(score) = pat.score(haystack, &mut self.matcher) {
+        if pattern.is_empty() {
+            for candidate in candidates {
                 scored.push(ScoredCandidate {
                     candidate,
-                    score: score as i64,
+                    score: 0,
                 });
+            }
+        } else {
+            let pat = Pattern::new(
+                pattern,
+                CaseMatching::Smart,
+                Normalization::Smart,
+                AtomKind::Fuzzy,
+            );
+            let mut utf32_buf = Vec::new();
+            for candidate in candidates {
+                utf32_buf.clear();
+                let haystack = Utf32Str::new(&candidate.name, &mut utf32_buf);
+                if let Some(score) = pat.score(haystack, &mut self.matcher) {
+                    scored.push(ScoredCandidate {
+                        candidate,
+                        score: score as i64,
+                    });
+                }
             }
         }
 
-        // Sort by score descending, then alphabetically for ties
+        // Sort by score descending, then spec priority, then alphabetically.
         scored.sort_unstable_by(|a, b| {
             b.score
                 .cmp(&a.score)
+                .then_with(|| b.candidate.priority.cmp(&a.candidate.priority))
                 .then_with(|| a.candidate.name.cmp(&b.candidate.name))
         });
 
@@ -84,7 +83,11 @@ mod tests {
     fn make_candidate(name: &str) -> CompletionCandidate {
         CompletionCandidate {
             name: name.to_string(),
+            insert_value: None,
+            display_name: None,
             description: None,
+            icon: None,
+            priority: 50,
             kind: CandidateKind::Subcommand,
         }
     }
@@ -143,5 +146,17 @@ mod tests {
         ];
         let results = matcher.filter("", candidates);
         assert_eq!(results.len(), 3);
+    }
+
+    #[test]
+    fn test_priority_breaks_score_ties() {
+        let mut matcher = FuzzyMatcher::new();
+        let mut low = make_candidate("alpha");
+        low.priority = 10;
+        let mut high = make_candidate("beta");
+        high.priority = 90;
+
+        let results = matcher.filter("", vec![low, high]);
+        assert_eq!(results[0].candidate.name, "beta");
     }
 }

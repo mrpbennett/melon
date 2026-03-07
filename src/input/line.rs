@@ -9,6 +9,62 @@ pub struct CompletionEdit {
     pub delete_left: usize,
     pub delete_right: usize,
     pub insert_text: String,
+    pub move_left: usize,
+    pub submits_line: bool,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct CompletionText {
+    pub text: String,
+    pub cursor: usize,
+    pub submits_line: bool,
+}
+
+impl CompletionText {
+    pub fn from_insert_value(value: &str) -> Self {
+        let mut text = String::with_capacity(value.len());
+        let mut cursor = None;
+        let mut index = 0;
+
+        while index < value.len() {
+            if value[index..].starts_with("{cursor}") {
+                cursor = Some(text.len());
+                index += "{cursor}".len();
+                continue;
+            }
+
+            let mut chars = value[index..].chars();
+            let Some(ch) = chars.next() else {
+                break;
+            };
+            let ch_len = ch.len_utf8();
+            index += ch_len;
+
+            if ch == '\u{8}' {
+                if let Some((remove_at, _)) = text.char_indices().last() {
+                    text.truncate(remove_at);
+                    if let Some(position) = cursor.as_mut() {
+                        *position = (*position).min(text.len());
+                    }
+                }
+                continue;
+            }
+
+            text.push(ch);
+        }
+
+        let cursor = cursor.unwrap_or(text.len());
+        let submits_line = text.contains('\n') || text.contains('\r');
+        Self {
+            text,
+            cursor,
+            submits_line,
+        }
+    }
+
+    pub fn cursor_at_end(&self) -> bool {
+        self.cursor == self.text.len()
+    }
 }
 
 impl LineState {
@@ -117,7 +173,7 @@ impl LineState {
 
     pub fn apply_completion(
         &mut self,
-        replacement: &str,
+        replacement: &CompletionText,
         partial_chars: usize,
         append_space: bool,
     ) -> CompletionEdit {
@@ -130,18 +186,31 @@ impl LineState {
         };
         let delete_right = self.buffer[self.cursor..token_end].chars().count();
 
-        let mut insert_text = replacement.to_string();
+        let mut insert_text = replacement.text.clone();
         if append_space {
             insert_text.push(' ');
         }
 
         self.buffer.replace_range(start..token_end, &insert_text);
-        self.cursor = start + insert_text.len();
+        let cursor = if append_space && replacement.cursor_at_end() {
+            insert_text.len()
+        } else {
+            replacement.cursor
+        };
+        let move_left = insert_text[cursor..].chars().count();
+
+        if replacement.submits_line {
+            self.clear();
+        } else {
+            self.cursor = start + cursor;
+        }
 
         CompletionEdit {
             delete_left,
             delete_right,
             insert_text,
+            move_left,
+            submits_line: replacement.submits_line,
         }
     }
 
@@ -232,16 +301,54 @@ mod tests {
         line.move_left();
         line.move_left();
         line.move_left();
-        let edit = line.apply_completion("checkout", 3, true);
+        let edit = line.apply_completion(&CompletionText::from_insert_value("checkout"), 3, true);
         assert_eq!(
             edit,
             CompletionEdit {
                 delete_left: 3,
                 delete_right: 3,
                 insert_text: "checkout ".into(),
+                move_left: 0,
+                submits_line: false,
             }
         );
         assert_eq!(line.buffer(), "git checkout ");
+    }
+
+    #[test]
+    fn test_completion_text_respects_cursor_marker() {
+        let completion = CompletionText::from_insert_value("-m '{cursor}'");
+        assert_eq!(completion.text, "-m ''");
+        assert_eq!(completion.cursor, 4);
+        assert!(!completion.submits_line);
+    }
+
+    #[test]
+    fn test_completion_text_applies_backspace_escape() {
+        let completion = CompletionText::from_insert_value("foo\u{8}bar");
+        assert_eq!(completion.text, "fobar");
+        assert_eq!(completion.cursor, "fobar".len());
+    }
+
+    #[test]
+    fn test_apply_completion_moves_cursor_left_for_internal_cursor_marker() {
+        let mut line = LineState::default();
+        line.insert_text("git commit ");
+        let completion = CompletionText::from_insert_value("-m '{cursor}'");
+        let edit = line.apply_completion(&completion, 0, false);
+
+        assert_eq!(
+            edit,
+            CompletionEdit {
+                delete_left: 0,
+                delete_right: 0,
+                insert_text: "-m ''".into(),
+                move_left: 1,
+                submits_line: false,
+            }
+        );
+        assert_eq!(line.buffer(), "git commit -m ''");
+        assert_eq!(line.cursor(), "git commit -m '".len());
     }
 
     #[test]

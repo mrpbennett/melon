@@ -9,7 +9,7 @@ use crate::completion::loader::SpecStore;
 use crate::completion::matcher::FuzzyMatcher;
 use crate::completion::spec::CandidateKind;
 use crate::config::Config;
-use crate::input::line::{CompletionEdit, LineState};
+use crate::input::line::{CompletionEdit, CompletionText, LineState};
 use crate::input::trigger::{classify_input, InputAction};
 use crate::shell::detect::detect_shell;
 use crate::ui::popup::PopupState;
@@ -26,6 +26,7 @@ enum Mode {
 }
 
 const DELETE_KEY_SEQUENCE: &[u8] = b"\x1b[3~";
+const CURSOR_LEFT_SEQUENCE: &[u8] = b"\x1b[D";
 
 fn drain_channel_batch(receiver: &mut mpsc::Receiver<Vec<u8>>, mut batch: Vec<u8>) -> Vec<u8> {
     while let Ok(next) = receiver.try_recv() {
@@ -97,6 +98,9 @@ fn apply_completion_edit(edit: &CompletionEdit) -> Vec<u8> {
     }
     bytes.extend(std::iter::repeat_n(0x7f, edit.delete_left));
     bytes.extend_from_slice(edit.insert_text.as_bytes());
+    for _ in 0..edit.move_left {
+        bytes.extend_from_slice(CURSOR_LEFT_SEQUENCE);
+    }
     bytes
 }
 
@@ -818,15 +822,21 @@ pub async fn run_proxy() -> Result<i32> {
                                 let _ = stdout_tx.send(render_buf).await;
                             }
                             InputAction::Enter => {
-                                if let Some((name, kind)) = popup.selected_item().map(|item| {
-                                    (item.candidate.name.clone(), item.candidate.kind.clone())
-                                }) {
+                                if let Some(candidate) =
+                                    popup.selected_item().map(|item| item.candidate.clone())
+                                {
+                                    let completion =
+                                        CompletionText::from_insert_value(candidate.insert_text());
                                     let append_space = line_state.should_append_space(
-                                        matches!(kind, CandidateKind::Folder),
+                                        matches!(candidate.kind, CandidateKind::Folder),
                                         popup_partial_len,
+                                    ) && completion.cursor_at_end()
+                                        && !completion.submits_line;
+                                    let edit = line_state.apply_completion(
+                                        &completion,
+                                        popup_partial_len,
+                                        append_space,
                                     );
-                                    let edit =
-                                        line_state.apply_completion(&name, popup_partial_len, append_space);
                                     sync_cursor_from_line(
                                         &line_state,
                                         line_start_row,

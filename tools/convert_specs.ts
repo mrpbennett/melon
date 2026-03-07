@@ -75,7 +75,7 @@ async function convertSpec(inputPath: string, outputDir: string): Promise<boolea
       return false;
     }
 
-    // Clean the spec: remove function values, generators, etc.
+    // Clean the spec: remove function values and unsupported dynamic hooks.
     const cleaned = cleanSpec(specObj);
     if (!cleaned) return false;
 
@@ -105,8 +105,8 @@ function cleanSpec(obj: unknown): unknown {
     const result: Record<string, unknown> = {};
     let hasKeys = false;
     for (const [key, value] of Object.entries(obj as Record<string, unknown>)) {
-      // Skip function-based generators, custom props
-      if (key === "generators" || key === "custom" || key === "trigger" || key === "getQueryTerm") {
+      // Skip unsupported dynamic hooks that require executing arbitrary JS.
+      if (key === "custom" || key === "getQueryTerm") {
         continue;
       }
       const cleaned = cleanSpec(value);

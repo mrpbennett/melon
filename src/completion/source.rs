@@ -1,4 +1,4 @@
-use super::spec::{CandidateKind, CompletionCandidate};
+use super::spec::{CandidateKind, CompletionCandidate, DEFAULT_CANDIDATE_PRIORITY};
 use std::path::{Path, PathBuf};
 
 /// Trait for completion data sources.
@@ -62,11 +62,15 @@ impl CompletionSource for PathSource {
             );
             candidates.push(CompletionCandidate {
                 name: display_name,
+                insert_value: None,
+                display_name: None,
                 description: if entry.is_dir {
                     Some("Directory".into())
                 } else {
                     None
                 },
+                icon: None,
+                priority: DEFAULT_CANDIDATE_PRIORITY,
                 kind: if entry.is_dir {
                     CandidateKind::Folder
                 } else {
