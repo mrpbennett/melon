@@ -26,7 +26,7 @@ fn bench_completion(iterations: usize) {
     let mut matcher = FuzzyMatcher::new();
 
     run_bench("completion.git_com", iterations, || {
-        let completion = engine.complete("git com");
+        let completion = engine.complete("git com", ".");
         black_box(matcher.filter(&completion.partial, completion.candidates));
     });
 }
@@ -47,7 +47,7 @@ fn bench_popup_typing(iterations: usize) {
 
     run_bench("completion.popup_typing", iterations, || {
         for input in &inputs {
-            let completion = engine.complete(input);
+            let completion = engine.complete(input, ".");
             black_box(matcher.filter(&completion.partial, completion.candidates));
         }
     });

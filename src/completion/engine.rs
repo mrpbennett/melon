@@ -86,17 +86,17 @@ impl CompletionEngine {
     }
 
     /// Generate candidates for the current input line.
-    pub fn complete(&mut self, input: &str) -> CompletionResult {
+    pub fn complete(&mut self, input: &str, cwd: &str) -> CompletionResult {
         let parsed = parser::parse_completion_input(input);
-        let candidates = self.complete_parsed(&parsed);
+        let candidates = self.complete_parsed(&parsed, cwd);
         CompletionResult {
             partial: parsed.partial,
             candidates,
         }
     }
 
-    fn complete_parsed(&mut self, parsed: &ParsedLine) -> Vec<CompletionCandidate> {
-        let Some(resolved) = Self::resolve_context(&self.store, parsed) else {
+    fn complete_parsed(&mut self, parsed: &ParsedLine, cwd: &str) -> Vec<CompletionCandidate> {
+        let Some(resolved) = Self::resolve_context(&self.store, parsed, cwd) else {
             self.cached_context = None;
             return vec![];
         };
@@ -129,6 +129,7 @@ impl CompletionEngine {
     fn resolve_context<'a>(
         store: &'a SpecStore,
         parsed: &'a ParsedLine,
+        cwd: &str,
     ) -> Option<ResolvedContext<'a>> {
         if parsed.tokens.is_empty() {
             return Some(ResolvedContext {
@@ -187,6 +188,7 @@ impl CompletionEngine {
                     partial,
                     command,
                     &subcommand_chain,
+                    cwd,
                 ),
             });
         }
@@ -220,6 +222,7 @@ impl CompletionEngine {
                 partial,
                 command,
                 &subcommand_chain,
+                cwd,
             ),
         })
     }
@@ -404,12 +407,19 @@ impl CompletionEngine {
         partial: &str,
         command: &str,
         subcommands: &[&str],
+        cwd: &str,
     ) -> Option<CompletionContext> {
         for opt in Self::get_options(node) {
             if opt.name.contains(option_name)
                 && opt.args.first().is_some_and(Self::arg_uses_path_templates)
             {
-                return Some(Self::make_path_context(command, subcommands, partial, true));
+                return Some(Self::make_path_context(
+                    command,
+                    subcommands,
+                    partial,
+                    true,
+                    cwd,
+                ));
             }
         }
         None
@@ -421,6 +431,7 @@ impl CompletionEngine {
         partial: &str,
         command: &str,
         subcommands: &[&str],
+        cwd: &str,
     ) -> Option<CompletionContext> {
         Self::get_args(node)
             .enumerate()
@@ -429,7 +440,7 @@ impl CompletionEngine {
             })
             .map(|(_, arg)| arg)
             .filter(|arg| Self::arg_uses_path_templates(arg))
-            .map(|_| Self::make_path_context(command, subcommands, partial, false))
+            .map(|_| Self::make_path_context(command, subcommands, partial, false, cwd))
     }
 
     fn make_path_context(
@@ -437,6 +448,7 @@ impl CompletionEngine {
         subcommands: &[&str],
         partial: &str,
         completing_option_arg: bool,
+        cwd: &str,
     ) -> CompletionContext {
         CompletionContext {
             command: command.to_string(),
@@ -446,7 +458,7 @@ impl CompletionEngine {
                 .collect(),
             partial: partial.to_string(),
             completing_option_arg,
-            cwd: ".".to_string(),
+            cwd: cwd.to_string(),
         }
     }
 
@@ -526,7 +538,7 @@ mod tests {
     #[test]
     fn test_complete_subcommands() {
         let mut engine = CompletionEngine::new(test_store());
-        let candidates = engine.complete("git com").candidates;
+        let candidates = engine.complete("git com", ".").candidates;
         let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"commit"));
         assert!(names.contains(&"compare"));
@@ -537,7 +549,7 @@ mod tests {
         use crate::completion::matcher::FuzzyMatcher;
 
         let mut engine = CompletionEngine::new(test_store());
-        let completion = engine.complete("git com");
+        let completion = engine.complete("git com", ".");
         let mut matcher = FuzzyMatcher::new();
         let scored = matcher.filter(&completion.partial, completion.candidates);
         let names: Vec<&str> = scored.iter().map(|s| s.candidate.name.as_str()).collect();
@@ -549,7 +561,7 @@ mod tests {
     #[test]
     fn test_complete_options() {
         let mut engine = CompletionEngine::new(test_store());
-        let candidates = engine.complete("git commit -").candidates;
+        let candidates = engine.complete("git commit -", ".").candidates;
         let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"-m"));
         assert!(names.contains(&"--message"));
@@ -558,7 +570,7 @@ mod tests {
     #[test]
     fn test_no_completions_after_non_template_arg() {
         let mut engine = CompletionEngine::new(test_store());
-        let candidates = engine.complete("git clone ").candidates;
+        let candidates = engine.complete("git clone ", ".").candidates;
         let file_candidates: Vec<&str> = candidates
             .iter()
             .filter(|c| matches!(c.kind, CandidateKind::File | CandidateKind::Folder))
@@ -573,7 +585,7 @@ mod tests {
     #[test]
     fn test_complete_all_subcommands() {
         let mut engine = CompletionEngine::new(test_store());
-        let candidates = engine.complete("git ").candidates;
+        let candidates = engine.complete("git ", ".").candidates;
         let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"commit"));
         assert!(names.contains(&"clone"));

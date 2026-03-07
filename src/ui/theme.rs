@@ -29,14 +29,42 @@ pub struct Theme {
 impl Default for Theme {
     fn default() -> Self {
         Self {
-            border: Color::Rgb { r: 88, g: 91, b: 112 },
-            bg: Color::Rgb { r: 30, g: 30, b: 46 },
-            fg: Color::Rgb { r: 205, g: 214, b: 244 },
-            selected_bg: Color::Rgb { r: 49, g: 50, b: 68 },
-            selected_fg: Color::Rgb { r: 205, g: 214, b: 244 },
-            description_fg: Color::Rgb { r: 108, g: 112, b: 134 },
-            match_fg: Color::Rgb { r: 137, g: 180, b: 250 },
-max_visible: 8,
+            border: Color::Rgb {
+                r: 88,
+                g: 91,
+                b: 112,
+            },
+            bg: Color::Rgb {
+                r: 30,
+                g: 30,
+                b: 46,
+            },
+            fg: Color::Rgb {
+                r: 205,
+                g: 214,
+                b: 244,
+            },
+            selected_bg: Color::Rgb {
+                r: 49,
+                g: 50,
+                b: 68,
+            },
+            selected_fg: Color::Rgb {
+                r: 205,
+                g: 214,
+                b: 244,
+            },
+            description_fg: Color::Rgb {
+                r: 108,
+                g: 112,
+                b: 134,
+            },
+            match_fg: Color::Rgb {
+                r: 137,
+                g: 180,
+                b: 250,
+            },
+            max_visible: 8,
             min_width: 20,
             max_width: 60,
             show_description_panel: false,

@@ -19,7 +19,11 @@ fn test_real_specs_deserialize() {
             match result {
                 Ok(val) => {
                     // Verify basic structure
-                    assert!(val.get("name").is_some(), "{}: missing 'name' field", path.display());
+                    assert!(
+                        val.get("name").is_some(),
+                        "{}: missing 'name' field",
+                        path.display()
+                    );
                     count += 1;
                 }
                 Err(e) => {
@@ -29,7 +33,11 @@ fn test_real_specs_deserialize() {
         }
     }
 
-    assert!(errors.is_empty(), "Spec parse errors:\n{}", errors.join("\n"));
+    assert!(
+        errors.is_empty(),
+        "Spec parse errors:\n{}",
+        errors.join("\n")
+    );
     assert!(count >= 10, "Expected at least 10 specs, found {count}");
     eprintln!("Successfully validated {count} specs");
 }

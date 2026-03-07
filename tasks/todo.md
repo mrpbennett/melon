@@ -34,6 +34,20 @@
 - `path.cached_same_base`: 36.77 us average
 - `path.alternating_base`: 261.08 us average
 
+## UX Pass
+- [x] Track the active shell working directory via OSC 7 and use it for relative path completion.
+- [x] Replace the append-only line model with a cursor-aware editable line buffer that handles mid-line editing.
+- [x] Preserve popup selection across re-filtering when the selected candidate still exists.
+- [x] Accept completions by replacing the token around the cursor and appending a trailing space only when appropriate.
+- [x] Verify with `cargo test -q`, `cargo clippy -q`, and targeted benchmark/manual sanity checks.
+
+### UX Pass Review
+- Added a cursor-aware `LineState` so melon can keep editing state around the cursor instead of assuming append-only input.
+- The proxy now refreshes popup completions against `line_state.before_cursor()` and preserves selection while typing, backspacing, deleting, and moving the cursor.
+- Added OSC 7 shell integration in the install snippet and PTY-side OSC 7 parsing so relative path completion follows the wrapped shell's actual working directory.
+- Completion acceptance now replaces the token around the cursor, avoids clobbering text outside that token, and only appends a trailing space when the inserted completion ends at the buffer boundary and is not a folder.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, `cargo clippy -q`, `MELON_BENCH_ITERS=1000 cargo bench --bench perf`, and an install-snippet sanity check via `cargo run -q -- --install`.
+
 ## Phase 1: PTY Proxy Skeleton ✅
 - [x] `cargo init`, add dependencies (Cargo.toml)
 - [x] `pty/proxy.rs` — spawn $SHELL in PTY, raw mode, async stdin↔PTY proxy

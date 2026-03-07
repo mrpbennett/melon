@@ -1,2 +1,2 @@
-pub mod detect;
 pub mod cursor;
+pub mod detect;

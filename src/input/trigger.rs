@@ -12,6 +12,16 @@ pub enum InputAction {
     Down,
     /// Arrow up — select previous item in popup.
     Up,
+    /// Arrow left — move cursor left.
+    Left,
+    /// Arrow right — move cursor right.
+    Right,
+    /// Home / Ctrl-A — move cursor to line start.
+    Home,
+    /// End / Ctrl-E — move cursor to line end.
+    End,
+    /// Delete the character under the cursor.
+    Delete,
     /// Enter — accept selected completion (when popup open).
     Enter,
     /// Escape — dismiss popup.
@@ -49,6 +59,16 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
         return (InputAction::KillWord, 1);
     }
 
+    // Ctrl-A — line start
+    if buf[0] == 0x01 {
+        return (InputAction::Home, 1);
+    }
+
+    // Ctrl-E — line end
+    if buf[0] == 0x05 {
+        return (InputAction::End, 1);
+    }
+
     // Ctrl-U — kill entire line
     if buf[0] == 0x15 {
         return (InputAction::KillLine, 1);
@@ -70,8 +90,15 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
                 match buf[2] {
                     b'A' => return (InputAction::Up, 3),
                     b'B' => return (InputAction::Down, 3),
+                    b'C' => return (InputAction::Right, 3),
+                    b'D' => return (InputAction::Left, 3),
+                    b'H' => return (InputAction::Home, 3),
+                    b'F' => return (InputAction::End, 3),
                     // Shift+Tab is ESC [ Z
                     b'Z' => return (InputAction::ShiftTab, 3),
+                    b'1' if buf.len() >= 4 && buf[3] == b'~' => return (InputAction::Home, 4),
+                    b'4' if buf.len() >= 4 && buf[3] == b'~' => return (InputAction::End, 4),
+                    b'3' if buf.len() >= 4 && buf[3] == b'~' => return (InputAction::Delete, 4),
                     _ => {}
                 }
             }
@@ -155,6 +182,10 @@ mod tests {
         assert_eq!(action, InputAction::Up);
         let (action, _) = classify_input(&[0x1b, b'[', b'B']);
         assert_eq!(action, InputAction::Down);
+        let (action, _) = classify_input(&[0x1b, b'[', b'C']);
+        assert_eq!(action, InputAction::Right);
+        let (action, _) = classify_input(&[0x1b, b'[', b'D']);
+        assert_eq!(action, InputAction::Left);
     }
 
     #[test]
@@ -181,5 +212,17 @@ mod tests {
         let (action, consumed) = classify_input(&[0x1b, b'[', b'Z']);
         assert_eq!(action, InputAction::ShiftTab);
         assert_eq!(consumed, 3);
+    }
+
+    #[test]
+    fn test_delete_and_home_end() {
+        let (action, consumed) = classify_input(&[0x1b, b'[', b'3', b'~']);
+        assert_eq!(action, InputAction::Delete);
+        assert_eq!(consumed, 4);
+
+        let (action, _) = classify_input(&[0x01]);
+        assert_eq!(action, InputAction::Home);
+        let (action, _) = classify_input(&[0x05]);
+        assert_eq!(action, InputAction::End);
     }
 }

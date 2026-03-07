@@ -120,8 +120,16 @@ impl PopupRenderer {
             };
 
             let is_selected = idx == state.selected;
-            let bg = if is_selected { self.theme.selected_bg } else { self.theme.bg };
-            let fg = if is_selected { self.theme.selected_fg } else { self.theme.fg };
+            let bg = if is_selected {
+                self.theme.selected_bg
+            } else {
+                self.theme.bg
+            };
+            let fg = if is_selected {
+                self.theme.selected_fg
+            } else {
+                self.theme.fg
+            };
 
             // Kind icon (muted, 2 chars wide)
             let icon = match item.candidate.kind {
@@ -340,11 +348,7 @@ impl PopupRenderer {
         }
 
         // Reset colors and restore cursor
-        crossterm::execute!(
-            stdout,
-            style::ResetColor,
-            cursor::RestorePosition,
-        )?;
+        crossterm::execute!(stdout, style::ResetColor, cursor::RestorePosition,)?;
 
         stdout.flush()?;
 
@@ -383,10 +387,7 @@ impl PopupRenderer {
             )?;
         }
 
-        crossterm::execute!(
-            stdout,
-            cursor::RestorePosition,
-        )?;
+        crossterm::execute!(stdout, cursor::RestorePosition,)?;
         stdout.flush()?;
         Ok(())
     }

@@ -33,6 +33,28 @@ impl PopupState {
         self.scroll_offset = 0;
     }
 
+    /// Update the popup while preserving selection when the same candidate still exists.
+    pub fn set_items_preserve_selection(&mut self, items: Vec<ScoredCandidate>) {
+        let selected_name = self.selected_item().map(|item| item.candidate.name.clone());
+        self.visible = !items.is_empty();
+        self.items = items;
+
+        if let Some(selected_name) = selected_name {
+            if let Some(index) = self
+                .items
+                .iter()
+                .position(|item| item.candidate.name == selected_name)
+            {
+                self.selected = index;
+                self.ensure_visible();
+                return;
+            }
+        }
+
+        self.selected = 0;
+        self.scroll_offset = 0;
+    }
+
     /// Move selection down.
     pub fn select_next(&mut self) {
         if self.items.is_empty() {
@@ -75,7 +97,13 @@ impl PopupState {
 
     /// Get the currently selected item's completion text.
     pub fn selected_text(&self) -> Option<&str> {
-        self.items.get(self.selected).map(|s| s.candidate.name.as_str())
+        self.items
+            .get(self.selected)
+            .map(|s| s.candidate.name.as_str())
+    }
+
+    pub fn selected_item(&self) -> Option<&ScoredCandidate> {
+        self.items.get(self.selected)
     }
 
     /// Dismiss the popup.
@@ -156,5 +184,14 @@ mod tests {
         state.dismiss();
         assert!(!state.visible);
         assert!(state.items.is_empty());
+    }
+
+    #[test]
+    fn test_selection_preserved_when_candidate_still_exists() {
+        let mut state = PopupState::new(5);
+        state.set_items(vec![scored("alpha"), scored("beta"), scored("gamma")]);
+        state.select_next();
+        state.set_items_preserve_selection(vec![scored("beta"), scored("delta")]);
+        assert_eq!(state.selected_text(), Some("beta"));
     }
 }

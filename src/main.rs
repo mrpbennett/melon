@@ -46,6 +46,24 @@ fn print_install_snippet() {
 
     println!("# Add this to your shell rc file (~/.zshrc or ~/.bashrc):");
     println!("# It wraps your shell in melon for autocomplete support.");
+    println!("# When running inside melon, emit OSC 7 so melon can track shell cwd.");
+    println!();
+    println!("if [ -n \"$MELON\" ]; then");
+    println!("  __melon_osc7() {{");
+    println!("    printf '\\033]7;file://%s%s\\007' \"${{HOSTNAME:-localhost}}\" \"$PWD\"");
+    println!("  }}");
+    println!("  if [ -n \"$ZSH_VERSION\" ]; then");
+    println!("    autoload -Uz add-zsh-hook 2>/dev/null");
+    println!(
+        "    add-zsh-hook precmd __melon_osc7 2>/dev/null || precmd_functions+=(__melon_osc7)"
+    );
+    println!("  elif [ -n \"$BASH_VERSION\" ]; then");
+    println!("    case \";${{PROMPT_COMMAND}};\" in");
+    println!("      *\";__melon_osc7;\"*) ;;");
+    println!("      *) PROMPT_COMMAND=\"__melon_osc7${{PROMPT_COMMAND:+;$PROMPT_COMMAND}}\" ;;");
+    println!("    esac");
+    println!("  fi");
+    println!("fi");
     println!();
     println!("if [ -z \"$MELON\" ] && [ -t 0 ] && [ -t 1 ]; then");
     println!("  exec {exe}");
