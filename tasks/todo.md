@@ -149,3 +149,68 @@
 - 36 command specs (git, cargo, docker, npm, go, kubectl, gh, brew, pip, tmux, jq, and more)
 - Binary embeds all specs via include_dir — no external files needed at runtime
 - Architecture: PTY wrapper with async channels + state machine for I/O interception
+
+## Review Pass: 2026-03-07
+- [x] Read `AGENTS.md`, `docs/architecture.md`, and current task history to understand project constraints.
+- [x] Inspect the PTY proxy, completion engine, generator runtime, parser, renderer, and supporting modules.
+- [x] Run `cargo test -q` and `cargo clippy -q` to confirm the current baseline before making recommendations.
+- [x] Summarize concrete improvement opportunities with exact file references and severity.
+
+### Review Notes
+- Baseline health is good: `cargo test -q` passed with 78 total tests and `cargo clippy -q` passed cleanly.
+- The main improvement opportunities are around generator execution/caching, terminal cursor tracking, popup cleanup, and exit-status propagation.
+
+### Review Findings
+- Generator session caching ignores `partial`, so scripts that read `MELON_PARTIAL` can return stale candidates unless a custom `trigger` happens to invalidate the cache.
+- Generator scripts run synchronously on the proxy task with a polling sleep loop, which can stall PTY forwarding and make popup activation feel frozen for up to the configured timeout.
+- PTY cursor tracking drops incomplete CSI sequences across read boundaries and treats all non-ASCII characters as width 1, which can misplace or smear the popup after realistic shell output.
+- The description panel can render taller than the main popup, but renderer cleanup only tracks the main popup height, leaving stale rows behind after re-render or dismiss.
+- `run_proxy()` claims to return the child exit code, but the current implementation collapses that to `0` for any normal child exit and `1` otherwise.
+
+## Generator/Runtime Hardening Pass
+- [x] Move completion execution off the main proxy loop into a dedicated worker so slow generators do not stall PTY I/O.
+- [x] Make generator session caching partial-aware when no explicit trigger is configured, while preserving existing trigger-based reuse and shared-cache semantics.
+- [x] Preserve the wrapped shell's actual exit status instead of collapsing all normal exits to `0`.
+- [x] Add focused regression tests for generator cache invalidation and exit-status handling.
+- [x] Verify with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Hardening Spec
+- Keep the existing completion engine API synchronous; isolate blocking work with a worker instead of rewriting the whole engine async.
+- Coalesce queued completion requests so popup typing prefers the latest line state over processing every intermediate keystroke.
+- Treat `partial` as part of the session cache identity when a generator does not declare a `trigger`, because Melon exposes `MELON_PARTIAL` to scripts.
+- Preserve the current Tab behavior: if no completions are found, forward a literal tab to the shell.
+- Keep CLI/config behavior unchanged.
+
+### Hardening Review
+- Added a dedicated completion worker in `src/pty/proxy.rs` that owns `CompletionEngine` and `FuzzyMatcher`, coalesces queued requests, and returns scored popup results back to the async proxy loop.
+- Generator session cache keys in `src/completion/generator.rs` now include the typed `partial` when no explicit trigger exists, while trigger-based generators still reuse results using the trigger prefix.
+- The proxy now propagates `portable_pty::ExitStatus::exit_code()` instead of collapsing all normal child exits to `0`.
+- Added focused regressions for no-trigger partial invalidation and exit-code propagation.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+## Terminal Hardening Pass
+- [x] Fix popup render/clear height accounting so the description panel is fully erased on refresh and dismiss.
+- [x] Preserve incomplete PTY escape sequences across read boundaries instead of dropping them.
+- [x] Use display-width-aware cursor tracking for PTY output so wide glyphs do not misplace the popup.
+- [x] Add focused regression tests for popup height accounting and PTY cursor tracking.
+- [x] Verify with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Terminal Hardening Spec
+- Keep the existing popup layout and visual design; fix bookkeeping rather than redesigning the renderer.
+- Track any additional rendered lines from the description panel in the same `popup_lines` contract used by `render()` and `clear()`.
+- Preserve split OSC/CSI state between PTY reads using lightweight carry buffers inside the proxy loop.
+- Use terminal display width for printable PTY output, including emoji/wide glyphs, while keeping existing ASCII behavior unchanged.
+
+### Terminal Hardening Review
+- `src/ui/render.rs` now computes total rendered height up front, positions the popup using that full height, and reports the same height back to `clear()`, so side panels no longer leave stale rows behind.
+- `src/pty/proxy.rs` now keeps trailing PTY bytes for incomplete CSI/OSC/UTF-8 sequences and resumes parsing them on the next read instead of dropping them.
+- Cursor tracking now uses terminal display width for both local line-state positioning and PTY output parsing, which fixes wide-glyph drift.
+- Added regressions for panel-height reporting, split CSI handling, wide-glyph cursor movement, and split UTF-8 handling.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Manual Sanity Check
+- Launched `cargo run -q` in a PTY, responded to the initial DSR query, and exercised popup open, dismiss, selection redraw, and acceptance interactively.
+- Confirmed popup acceptance inserted `git commit ` without executing the command when Enter was sent after the popup had opened.
+- Confirmed cwd tracking updated after `cd /tmp/melon-manual-sanity/alpha` via OSC 7, and file completion under `cat fi<Tab>` resolved `file-one.txt` from the new cwd.
+- Confirmed the wrapped shell exited with status `7` when sending `exit 7`, so `melon` no longer collapses non-zero exits to success.
+- Observed sandbox-related shell startup noise from `oh-my-zsh`, `atuin`, `zoxide`, and history locking under `/Users/paul`, but these warnings did not block the completion flow under test.

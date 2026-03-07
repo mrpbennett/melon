@@ -22,7 +22,7 @@ pub struct GeneratorContext {
 #[derive(Default)]
 pub struct GeneratorSource {
     path_source: PathSource,
-    session_cache: HashMap<SessionCacheKey, SessionCacheEntry>,
+    session_cache: HashMap<SessionCacheKey, Vec<CompletionCandidate>>,
     shared_cache: HashMap<SharedCacheKey, SharedCacheEntry>,
 }
 
@@ -34,12 +34,7 @@ struct SessionCacheKey {
     tokens: Vec<String>,
     cwd: String,
     completing_option_arg: bool,
-}
-
-#[derive(Clone)]
-struct SessionCacheEntry {
-    trigger_key: Option<String>,
-    candidates: Vec<CompletionCandidate>,
+    partial_key: String,
 }
 
 #[derive(Debug, Clone, Hash, PartialEq, Eq)]
@@ -79,23 +74,15 @@ impl GeneratorSource {
             tokens: context.tokens.clone(),
             cwd: context.cwd.clone(),
             completing_option_arg: context.completing_option_arg,
+            partial_key: session_partial_key(generator, &context.partial),
         };
-        let trigger_key = trigger_key(generator, &context.partial);
 
         if let Some(entry) = self.session_cache.get(&session_key) {
-            if entry.trigger_key == trigger_key {
-                return entry.candidates.clone();
-            }
+            return entry.clone();
         }
 
         let candidates = self.resolve_candidates(generator, context);
-        self.session_cache.insert(
-            session_key,
-            SessionCacheEntry {
-                trigger_key,
-                candidates: candidates.clone(),
-            },
-        );
+        self.session_cache.insert(session_key, candidates.clone());
         candidates
     }
 
@@ -382,6 +369,14 @@ fn trigger_key(generator: &Generator, partial: &str) -> Option<String> {
     Some(partial[..index + trigger.len()].to_string())
 }
 
+fn session_partial_key(generator: &Generator, partial: &str) -> String {
+    if generator.trigger.is_some() {
+        trigger_key(generator, partial).unwrap_or_default()
+    } else {
+        partial.to_string()
+    }
+}
+
 fn shared_cache_key(generator: &Generator, context: &GeneratorContext) -> Option<SharedCacheKey> {
     let cache = generator.cache.as_ref()?;
     Some(SharedCacheKey {
@@ -488,7 +483,41 @@ mod tests {
     }
 
     #[test]
-    fn test_session_cache_reuses_results_without_trigger_change() {
+    fn test_session_cache_reuses_results_for_same_partial_without_trigger() {
+        let dir = tempdir().unwrap();
+        let output_path = dir.path().join("branches.txt");
+        fs::write(&output_path, "main\n").unwrap();
+
+        let script = format!("cat {}", output_path.display());
+        let mut source = GeneratorSource::default();
+        let arg = Arg {
+            name: Some("branch".into()),
+            description: None,
+            suggestions: vec![],
+            generators: GeneratorOrGenerators::Single(Generator {
+                template: None,
+                script: Some(GeneratorScript::Single(script)),
+                script_timeout: Some(500),
+                split_on: Some("\n".into()),
+                trigger: None,
+                cache: None,
+            }),
+            template: None,
+            is_optional: false,
+            is_variadic: false,
+            default: None,
+        };
+
+        let first = source.candidates(&arg, &context(dir.path().to_str().unwrap(), "m"));
+        fs::write(&output_path, "release\n").unwrap();
+        let second = source.candidates(&arg, &context(dir.path().to_str().unwrap(), "m"));
+
+        assert_eq!(first[0].name, "main");
+        assert_eq!(second[0].name, "main");
+    }
+
+    #[test]
+    fn test_session_cache_invalidates_when_partial_changes_without_trigger() {
         let dir = tempdir().unwrap();
         let output_path = dir.path().join("branches.txt");
         fs::write(&output_path, "main\n").unwrap();
@@ -518,7 +547,7 @@ mod tests {
         let second = source.candidates(&arg, &context(dir.path().to_str().unwrap(), "ma"));
 
         assert_eq!(first[0].name, "main");
-        assert_eq!(second[0].name, "main");
+        assert_eq!(second[0].name, "release");
     }
 
     #[test]

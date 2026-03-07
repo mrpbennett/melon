@@ -181,18 +181,52 @@ impl PopupRenderer {
             available_after_icon
         }
         .max(1);
+        let popup_height = visible_count as u16 + 2;
 
-        // Position: below cursor, clamped to terminal bounds
-        let popup_row = if cursor_row + 1 + visible_count as u16 + 2 > term_rows {
-            // Not enough space below — draw above
-            cursor_row.saturating_sub(visible_count as u16 + 2)
+        let panel_height = if self.theme.show_description_panel {
+            state
+                .items
+                .get(state.selected)
+                .and_then(|selected| selected.candidate.description.as_ref())
+                .map(|desc| {
+                    let panel_inner_width: usize = 36;
+                    let wrap_width = panel_inner_width.saturating_sub(2);
+                    let desc_lines = word_wrap(desc, wrap_width);
+                    let content_lines = 1 + desc_lines.len();
+                    (visible_count + 2).max(content_lines + 3) as u16
+                })
+                .unwrap_or(popup_height)
         } else {
-            cursor_row + 1
+            popup_height
         };
+
         let popup_col = if cursor_col + popup_width as u16 > term_cols {
             term_cols.saturating_sub(popup_width as u16)
         } else {
             cursor_col
+        };
+        let panel_col = popup_col + popup_width as u16 + 1;
+        let panel_inner_width: usize = 36;
+        let panel_width = panel_inner_width + 2;
+        let renders_panel = self.theme.show_description_panel
+            && state
+                .items
+                .get(state.selected)
+                .and_then(|selected| selected.candidate.description.as_ref())
+                .is_some()
+            && panel_col + panel_width as u16 <= term_cols;
+        let rendered_height = if renders_panel {
+            popup_height.max(panel_height)
+        } else {
+            popup_height
+        };
+
+        // Position: below cursor, clamped to terminal bounds
+        let popup_row = if cursor_row + 1 + rendered_height > term_rows {
+            // Not enough space below — draw above
+            cursor_row.saturating_sub(rendered_height)
+        } else {
+            cursor_row + 1
         };
 
         // Save cursor position
@@ -322,113 +356,102 @@ impl PopupRenderer {
         )?;
 
         // Description panel (optional)
-        if self.theme.show_description_panel {
+        if renders_panel {
             if let Some(selected) = state.items.get(state.selected) {
                 if let Some(desc) = &selected.candidate.description {
                     let name = selected.candidate.display_label();
-                    let panel_col = popup_col + popup_width as u16 + 1;
-                    let panel_inner_width: usize = 36;
-                    let panel_width = panel_inner_width + 2;
+                    // Word-wrap description into lines of panel_inner_width
+                    let wrap_width = panel_inner_width.saturating_sub(2); // 1-char padding each side
+                    let desc_lines = word_wrap(desc, wrap_width);
 
-                    // Only draw if panel fits on screen
-                    if panel_col + panel_width as u16 <= term_cols {
-                        // Word-wrap description into lines of panel_inner_width
-                        let wrap_width = panel_inner_width.saturating_sub(2); // 1-char padding each side
-                        let desc_lines = word_wrap(desc, wrap_width);
+                    // Top border
+                    crossterm::execute!(
+                        stdout,
+                        cursor::MoveTo(panel_col, popup_row),
+                        style::SetForegroundColor(self.theme.border),
+                        style::SetBackgroundColor(self.theme.bg),
+                        style::Print(border::TOP_LEFT),
+                        style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
+                        style::Print(border::TOP_RIGHT),
+                    )?;
 
-                        // Panel height = max(visible_count + 2, 2 + 1 name line + desc lines + 1 padding)
-                        let content_lines = 1 + desc_lines.len(); // name + desc
-                        let panel_height = (visible_count + 2).max(content_lines + 3);
+                    // Name line
+                    let panel_name = truncate_with_ellipsis(name, wrap_width);
+                    let name_w = UnicodeWidthStr::width(panel_name.as_str());
+                    let name_pad = wrap_width.saturating_sub(name_w);
+                    crossterm::execute!(
+                        stdout,
+                        cursor::MoveTo(panel_col, popup_row + 1),
+                        style::SetForegroundColor(self.theme.border),
+                        style::SetBackgroundColor(self.theme.bg),
+                        style::Print(border::VERTICAL),
+                        style::SetForegroundColor(self.theme.selected_fg),
+                        style::Print(" "),
+                        style::Print(&panel_name),
+                        style::Print(" ".repeat(name_pad + 1)),
+                        style::SetForegroundColor(self.theme.border),
+                        style::Print(border::VERTICAL),
+                    )?;
 
-                        // Top border
+                    // Separator
+                    crossterm::execute!(
+                        stdout,
+                        cursor::MoveTo(panel_col, popup_row + 2),
+                        style::SetForegroundColor(self.theme.border),
+                        style::SetBackgroundColor(self.theme.bg),
+                        style::Print(border::VERTICAL),
+                        style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
+                        style::Print(border::VERTICAL),
+                    )?;
+
+                    // Description lines
+                    for (i, line) in desc_lines.iter().enumerate() {
+                        let row = popup_row + 3 + i as u16;
+                        if row >= popup_row + rendered_height - 1 {
+                            break;
+                        }
+                        let line_w = UnicodeWidthStr::width(line.as_str());
+                        let line_pad = wrap_width.saturating_sub(line_w);
                         crossterm::execute!(
                             stdout,
-                            cursor::MoveTo(panel_col, popup_row),
-                            style::SetForegroundColor(self.theme.border),
-                            style::SetBackgroundColor(self.theme.bg),
-                            style::Print(border::TOP_LEFT),
-                            style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
-                            style::Print(border::TOP_RIGHT),
-                        )?;
-
-                        // Name line
-                        let panel_name = truncate_with_ellipsis(name, wrap_width);
-                        let name_w = UnicodeWidthStr::width(panel_name.as_str());
-                        let name_pad = wrap_width.saturating_sub(name_w);
-                        crossterm::execute!(
-                            stdout,
-                            cursor::MoveTo(panel_col, popup_row + 1),
+                            cursor::MoveTo(panel_col, row),
                             style::SetForegroundColor(self.theme.border),
                             style::SetBackgroundColor(self.theme.bg),
                             style::Print(border::VERTICAL),
-                            style::SetForegroundColor(self.theme.selected_fg),
+                            style::SetForegroundColor(self.theme.description_fg),
                             style::Print(" "),
-                            style::Print(&panel_name),
-                            style::Print(" ".repeat(name_pad + 1)),
+                            style::Print(line),
+                            style::Print(" ".repeat(line_pad + 1)),
                             style::SetForegroundColor(self.theme.border),
                             style::Print(border::VERTICAL),
-                        )?;
-
-                        // Separator
-                        crossterm::execute!(
-                            stdout,
-                            cursor::MoveTo(panel_col, popup_row + 2),
-                            style::SetForegroundColor(self.theme.border),
-                            style::SetBackgroundColor(self.theme.bg),
-                            style::Print(border::VERTICAL),
-                            style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
-                            style::Print(border::VERTICAL),
-                        )?;
-
-                        // Description lines
-                        for (i, line) in desc_lines.iter().enumerate() {
-                            let row = popup_row + 3 + i as u16;
-                            if row >= popup_row + panel_height as u16 - 1 {
-                                break;
-                            }
-                            let line_w = UnicodeWidthStr::width(line.as_str());
-                            let line_pad = wrap_width.saturating_sub(line_w);
-                            crossterm::execute!(
-                                stdout,
-                                cursor::MoveTo(panel_col, row),
-                                style::SetForegroundColor(self.theme.border),
-                                style::SetBackgroundColor(self.theme.bg),
-                                style::Print(border::VERTICAL),
-                                style::SetForegroundColor(self.theme.description_fg),
-                                style::Print(" "),
-                                style::Print(line),
-                                style::Print(" ".repeat(line_pad + 1)),
-                                style::SetForegroundColor(self.theme.border),
-                                style::Print(border::VERTICAL),
-                            )?;
-                        }
-
-                        // Empty rows to fill panel height
-                        let last_desc_row = popup_row + 3 + desc_lines.len() as u16;
-                        let bottom_row_panel = popup_row + panel_height as u16 - 1;
-                        for row in last_desc_row..bottom_row_panel {
-                            crossterm::execute!(
-                                stdout,
-                                cursor::MoveTo(panel_col, row),
-                                style::SetForegroundColor(self.theme.border),
-                                style::SetBackgroundColor(self.theme.bg),
-                                style::Print(border::VERTICAL),
-                                style::Print(" ".repeat(panel_inner_width)),
-                                style::Print(border::VERTICAL),
-                            )?;
-                        }
-
-                        // Bottom border
-                        crossterm::execute!(
-                            stdout,
-                            cursor::MoveTo(panel_col, bottom_row_panel),
-                            style::SetForegroundColor(self.theme.border),
-                            style::SetBackgroundColor(self.theme.bg),
-                            style::Print(border::BOTTOM_LEFT),
-                            style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
-                            style::Print(border::BOTTOM_RIGHT),
                         )?;
                     }
+
+                    // Empty rows to fill panel height
+                    let last_desc_row = popup_row + 3 + desc_lines.len() as u16;
+                    let bottom_row_panel = popup_row + rendered_height - 1;
+                    for row in last_desc_row..bottom_row_panel {
+                        crossterm::execute!(
+                            stdout,
+                            cursor::MoveTo(panel_col, row),
+                            style::SetForegroundColor(self.theme.border),
+                            style::SetBackgroundColor(self.theme.bg),
+                            style::Print(border::VERTICAL),
+                            style::Print(" ".repeat(panel_inner_width)),
+                            style::Print(border::VERTICAL),
+                        )?;
+                    }
+
+                    // Bottom border
+                    crossterm::execute!(
+                        stdout,
+                        cursor::MoveTo(panel_col, bottom_row_panel),
+                        style::SetForegroundColor(self.theme.border),
+                        style::SetBackgroundColor(self.theme.bg),
+                        style::Print(border::BOTTOM_LEFT),
+                        style::Print(border::HORIZONTAL.repeat(panel_inner_width)),
+                        style::Print(border::BOTTOM_RIGHT),
+                    )?;
                 }
             }
         }
@@ -438,7 +461,7 @@ impl PopupRenderer {
 
         stdout.flush()?;
 
-        Ok((visible_count as u16 + 2, popup_col)) // (items + top/bottom border, actual col)
+        Ok((rendered_height, popup_col))
     }
 
     /// Clear the popup area.
@@ -527,6 +550,33 @@ mod tests {
 
         assert!(rendered.contains("🌿"));
         assert!(rendered.contains("Commit ✍️"));
+    }
+
+    #[test]
+    fn test_render_reports_panel_height_when_description_panel_is_taller() {
+        let mut theme = Theme::default();
+        theme.show_description_panel = true;
+        theme.max_width = 30;
+        let renderer = PopupRenderer::new(theme);
+        let mut popup = PopupState::new(5);
+        popup.set_items(vec![ScoredCandidate {
+            candidate: CompletionCandidate {
+                name: "commit".to_string(),
+                insert_value: None,
+                display_name: Some("Commit".into()),
+                description: Some(
+                    "This description is intentionally long so the side panel wraps across multiple lines and exceeds the main popup height.".into(),
+                ),
+                icon: Some("🌿".into()),
+                priority: 50,
+                kind: CandidateKind::Subcommand,
+            },
+            score: 10,
+        }]);
+
+        let mut output = Vec::new();
+        let (lines, _) = renderer.render(&mut output, &popup, 0, 0).unwrap();
+        assert!(lines > popup.visible_count() as u16 + 2);
     }
 
     #[test]

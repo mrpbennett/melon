@@ -1,12 +1,13 @@
 use anyhow::{Context, Result};
 use portable_pty::{native_pty_system, CommandBuilder, PtySize};
 use std::io::{Read, Write};
-use std::sync::Arc;
+use std::sync::{mpsc as std_mpsc, Arc};
 use tokio::sync::{mpsc, Notify};
+use unicode_width::{UnicodeWidthChar, UnicodeWidthStr};
 
 use crate::completion::engine::CompletionEngine;
 use crate::completion::loader::SpecStore;
-use crate::completion::matcher::FuzzyMatcher;
+use crate::completion::matcher::{FuzzyMatcher, ScoredCandidate};
 use crate::completion::spec::CandidateKind;
 use crate::config::Config;
 use crate::input::line::{CompletionEdit, CompletionText, LineState};
@@ -27,6 +28,36 @@ enum Mode {
     PopupActive,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum CompletionRequestKind {
+    OpenPopup,
+    RefreshPopup,
+}
+
+#[derive(Debug)]
+struct CompletionRequest {
+    id: u64,
+    input: String,
+    cwd: String,
+    kind: CompletionRequestKind,
+}
+
+#[derive(Debug)]
+struct CompletionResponse {
+    id: u64,
+    input: String,
+    cwd: String,
+    kind: CompletionRequestKind,
+    partial_len: usize,
+    scored: Vec<ScoredCandidate>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct PendingCompletionRequest {
+    id: u64,
+    kind: CompletionRequestKind,
+}
+
 const DELETE_KEY_SEQUENCE: &[u8] = b"\x1b[3~";
 const CURSOR_LEFT_SEQUENCE: &[u8] = b"\x1b[D";
 
@@ -35,6 +66,16 @@ fn drain_channel_batch(receiver: &mut mpsc::Receiver<Vec<u8>>, mut batch: Vec<u8
         batch.extend_from_slice(&next);
     }
     batch
+}
+
+fn drain_latest_completion_request(
+    receiver: &std_mpsc::Receiver<CompletionRequest>,
+    mut latest: CompletionRequest,
+) -> CompletionRequest {
+    while let Ok(next) = receiver.try_recv() {
+        latest = next;
+    }
+    latest
 }
 
 fn track_passthrough_insert(
@@ -74,7 +115,7 @@ fn cursor_position_from_line(
         return (line_start_row, line_start_col);
     }
 
-    let absolute_col = line_start_col as usize + line_state.before_cursor().chars().count();
+    let absolute_col = line_start_col as usize + UnicodeWidthStr::width(line_state.before_cursor());
     let row_limit = term_rows.saturating_sub(1) as usize;
     let row = (line_start_row as usize + absolute_col / term_cols as usize).min(row_limit) as u16;
     let col = (absolute_col % term_cols as usize) as u16;
@@ -227,12 +268,20 @@ fn handle_csi_sequence(
 
 fn track_pty_output(
     data: &[u8],
+    pending_bytes: &mut Vec<u8>,
     current_cwd: &mut String,
     osc_capture: &mut Option<Vec<u8>>,
     last_cursor_row: &mut u16,
     last_cursor_col: &mut u16,
 ) {
     let (term_cols, term_rows) = crossterm::terminal::size().unwrap_or((80, 24));
+    let combined = if pending_bytes.is_empty() {
+        None
+    } else {
+        pending_bytes.extend_from_slice(data);
+        Some(std::mem::take(pending_bytes))
+    };
+    let data = combined.as_deref().unwrap_or(data);
     let mut index = 0;
 
     while index < data.len() {
@@ -275,6 +324,10 @@ fn track_pty_output(
                 );
                 index += 1;
             }
+            0x1b if index + 1 >= data.len() => {
+                pending_bytes.extend_from_slice(&data[index..]);
+                break;
+            }
             0x1b if index + 1 < data.len() && data[index + 1] == b']' => {
                 *osc_capture = Some(vec![b']']);
                 index += 2;
@@ -286,6 +339,7 @@ fn track_pty_output(
                     seq_end += 1;
                 }
                 if seq_end >= data.len() {
+                    pending_bytes.extend_from_slice(&data[index..]);
                     break;
                 }
 
@@ -300,6 +354,18 @@ fn track_pty_output(
                 );
                 index = seq_end + 1;
             }
+            0x1b => {
+                let seq_start = index + 1;
+                let mut seq_end = seq_start;
+                while seq_end < data.len() && !(0x40..=0x7e).contains(&data[seq_end]) {
+                    seq_end += 1;
+                }
+                if seq_end >= data.len() {
+                    pending_bytes.extend_from_slice(&data[index..]);
+                    break;
+                }
+                index = seq_end + 1;
+            }
             byte if byte.is_ascii_control() => {
                 index += 1;
             }
@@ -308,8 +374,25 @@ fn track_pty_output(
                 index += 1;
             }
             byte if (byte & 0b1100_0000) != 0b1000_0000 => {
-                advance_cursor(last_cursor_row, last_cursor_col, 1, term_cols, term_rows);
-                index += utf8_char_len(byte).min(data.len() - index);
+                let char_len = utf8_char_len(byte);
+                if index + char_len > data.len() {
+                    pending_bytes.extend_from_slice(&data[index..]);
+                    break;
+                }
+
+                let width = std::str::from_utf8(&data[index..index + char_len])
+                    .ok()
+                    .and_then(|text| text.chars().next())
+                    .and_then(UnicodeWidthChar::width)
+                    .unwrap_or(1) as u16;
+                advance_cursor(
+                    last_cursor_row,
+                    last_cursor_col,
+                    width,
+                    term_cols,
+                    term_rows,
+                );
+                index += char_len;
             }
             _ => {
                 index += 1;
@@ -327,18 +410,6 @@ async fn flush_passthrough_buffer(pty_tx: &mpsc::Sender<Vec<u8>>, passthrough_bu
     let _ = pty_tx.send(pending).await;
 }
 
-struct PopupRefreshState<'a> {
-    renderer: &'a PopupRenderer,
-    popup: &'a mut PopupState,
-    stdout_tx: &'a mpsc::Sender<Vec<u8>>,
-    popup_row: u16,
-    popup_col: u16,
-    popup_col_actual: &'a mut u16,
-    popup_lines: &'a mut u16,
-    popup_partial_len: &'a mut usize,
-    mode: &'a mut Mode,
-}
-
 struct PopupCloseState<'a> {
     renderer: &'a PopupRenderer,
     popup: &'a mut PopupState,
@@ -348,50 +419,6 @@ struct PopupCloseState<'a> {
     popup_lines: &'a mut u16,
     popup_partial_len: &'a mut usize,
     mode: &'a mut Mode,
-}
-
-async fn refresh_popup_completion(
-    engine: &mut CompletionEngine,
-    matcher: &mut FuzzyMatcher,
-    line_state: &LineState,
-    cwd: &str,
-    state: PopupRefreshState<'_>,
-) {
-    let PopupRefreshState {
-        renderer,
-        popup,
-        stdout_tx,
-        popup_row,
-        popup_col,
-        popup_col_actual,
-        popup_lines,
-        popup_partial_len,
-        mode,
-    } = state;
-
-    let completion = engine.complete(line_state.before_cursor(), cwd);
-    let scored = matcher.filter(&completion.partial, completion.candidates);
-
-    if !scored.is_empty() {
-        *popup_partial_len = completion.partial.chars().count();
-        let mut render_buf = Vec::new();
-        let _ = renderer.clear(&mut render_buf, popup_row, *popup_col_actual, *popup_lines);
-        popup.set_items_preserve_selection(scored);
-        let (lines, col) = renderer
-            .render(&mut render_buf, popup, popup_row, popup_col)
-            .unwrap_or((0, *popup_col_actual));
-        *popup_lines = lines;
-        *popup_col_actual = col;
-        let _ = stdout_tx.send(render_buf).await;
-    } else {
-        let mut clear_buf = Vec::new();
-        let _ = renderer.clear(&mut clear_buf, popup_row, *popup_col_actual, *popup_lines);
-        let _ = stdout_tx.send(clear_buf).await;
-        popup.dismiss();
-        *popup_lines = 0;
-        *popup_partial_len = 0;
-        *mode = Mode::Passthrough;
-    }
 }
 
 async fn close_popup(state: PopupCloseState<'_>) {
@@ -412,6 +439,73 @@ async fn close_popup(state: PopupCloseState<'_>) {
     *popup_lines = 0;
     *popup_partial_len = 0;
     *mode = Mode::Passthrough;
+}
+
+fn queue_completion_request(
+    completion_tx: &std_mpsc::Sender<CompletionRequest>,
+    pending_completion: &mut Option<PendingCompletionRequest>,
+    next_request_id: &mut u64,
+    input: &str,
+    cwd: &str,
+    kind: CompletionRequestKind,
+) -> bool {
+    *next_request_id = next_request_id.wrapping_add(1);
+    let request_id = *next_request_id;
+    let request = CompletionRequest {
+        id: request_id,
+        input: input.to_string(),
+        cwd: cwd.to_string(),
+        kind,
+    };
+
+    if completion_tx.send(request).is_ok() {
+        *pending_completion = Some(PendingCompletionRequest {
+            id: request_id,
+            kind,
+        });
+        true
+    } else {
+        *pending_completion = None;
+        false
+    }
+}
+
+fn spawn_completion_worker(
+    store: SpecStore,
+) -> (
+    std_mpsc::Sender<CompletionRequest>,
+    mpsc::Receiver<CompletionResponse>,
+    tokio::task::JoinHandle<()>,
+) {
+    let (completion_tx, completion_rx) = std_mpsc::channel::<CompletionRequest>();
+    let (response_tx, response_rx) = mpsc::channel::<CompletionResponse>(64);
+    let handle = tokio::task::spawn_blocking(move || {
+        let mut engine = CompletionEngine::new(store);
+        let mut matcher = FuzzyMatcher::new();
+
+        while let Ok(request) = completion_rx.recv() {
+            let request = drain_latest_completion_request(&completion_rx, request);
+            let completion = engine.complete(&request.input, &request.cwd);
+            let response = CompletionResponse {
+                id: request.id,
+                input: request.input,
+                cwd: request.cwd,
+                kind: request.kind,
+                partial_len: completion.partial.chars().count(),
+                scored: matcher.filter(&completion.partial, completion.candidates),
+            };
+
+            if response_tx.blocking_send(response).is_err() {
+                break;
+            }
+        }
+    });
+
+    (completion_tx, response_rx, handle)
+}
+
+fn exit_status_code(status: portable_pty::ExitStatus) -> i32 {
+    status.exit_code() as i32
 }
 
 /// Spawn the user's shell inside a PTY and proxy I/O between the host terminal
@@ -435,8 +529,7 @@ pub async fn run_proxy() -> Result<i32> {
     let cmd_count = store.len();
     tracing::info!(cmd_count, "total completion specs loaded");
 
-    let mut engine = CompletionEngine::new(store);
-    let mut matcher = FuzzyMatcher::new();
+    let (completion_tx, mut completion_rx, completion_handle) = spawn_completion_worker(store);
 
     // Get current terminal size
     let (cols, rows) = crossterm::terminal::size().context("failed to get terminal size")?;
@@ -571,11 +664,10 @@ pub async fn run_proxy() -> Result<i32> {
     });
 
     // Wait for child exit in background
-    let (child_tx, mut child_rx) = mpsc::channel::<bool>(1);
+    let (child_tx, mut child_rx) = mpsc::channel::<i32>(1);
     let child_wait_handle = tokio::task::spawn_blocking(move || {
-        let status = child.wait();
-        let success = status.map(|s| s.success()).unwrap_or(false);
-        let _ = child_tx.blocking_send(success);
+        let exit_code = child.wait().map(exit_status_code).unwrap_or(1);
+        let _ = child_tx.blocking_send(exit_code);
     });
 
     // === Main state machine loop ===
@@ -604,7 +696,11 @@ pub async fn run_proxy() -> Result<i32> {
     // Actual column render() placed the popup at (may differ from popup_col when near right edge).
     let mut popup_col_actual: u16 = 0;
     let mut osc_capture: Option<Vec<u8>> = None;
+    let mut pty_pending_bytes = Vec::new();
     let mut child_exited = false;
+    let mut child_exit_code = 1;
+    let mut next_completion_request_id: u64 = 0;
+    let mut pending_completion: Option<PendingCompletionRequest> = None;
 
     loop {
         tokio::select! {
@@ -618,29 +714,25 @@ pub async fn run_proxy() -> Result<i32> {
                     offset += consumed;
                     let bytes = &raw[offset - consumed..offset];
 
+                    if mode == Mode::Passthrough
+                        && pending_completion
+                            .is_some_and(|request| request.kind == CompletionRequestKind::OpenPopup)
+                        && action != InputAction::Tab
+                    {
+                        pending_completion = None;
+                    }
+
                     if !matches!(action, InputAction::Passthrough) && !passthrough_buf.is_empty() {
                         flush_passthrough_buffer(&pty_tx, &mut passthrough_buf).await;
                         if mode == Mode::PopupActive {
-                            popup_row = last_cursor_row;
-                            popup_col = last_cursor_col;
-                            refresh_popup_completion(
-                                &mut engine,
-                                &mut matcher,
-                                &line_state,
+                            let _ = queue_completion_request(
+                                &completion_tx,
+                                &mut pending_completion,
+                                &mut next_completion_request_id,
+                                line_state.before_cursor(),
                                 &current_cwd,
-                                PopupRefreshState {
-                                    renderer: &renderer,
-                                    popup: &mut popup,
-                                    stdout_tx: &stdout_tx,
-                                    popup_row,
-                                    popup_col,
-                                    popup_col_actual: &mut popup_col_actual,
-                                    popup_lines: &mut popup_lines,
-                                    popup_partial_len: &mut popup_partial_len,
-                                    mode: &mut mode,
-                                },
-                            )
-                            .await;
+                                CompletionRequestKind::RefreshPopup,
+                            );
                         }
                     }
 
@@ -648,25 +740,14 @@ pub async fn run_proxy() -> Result<i32> {
                         Mode::Passthrough => match action {
                             InputAction::Tab => {
                                 if !line_state.before_cursor().trim().is_empty() {
-                                    let completion =
-                                        engine.complete(line_state.before_cursor(), &current_cwd);
-                                    let scored =
-                                        matcher.filter(&completion.partial, completion.candidates);
-                                    if !scored.is_empty() {
-                                        popup_partial_len = completion.partial.chars().count();
-                                        popup.set_items(scored);
-                                        mode = Mode::PopupActive;
-                                        popup_row = last_cursor_row;
-                                        popup_col = last_cursor_col;
-                                        let mut render_buf = Vec::new();
-                                        let (lines, col) = renderer
-                                            .render(&mut render_buf, &popup, popup_row, popup_col)
-                                            .unwrap_or((0, popup_col));
-                                        popup_lines = lines;
-                                        popup_col_actual = col;
-                                        let _ = stdout_tx.send(render_buf).await;
-                                    } else {
-                                        popup_partial_len = 0;
+                                    if !queue_completion_request(
+                                        &completion_tx,
+                                        &mut pending_completion,
+                                        &mut next_completion_request_id,
+                                        line_state.before_cursor(),
+                                        &current_cwd,
+                                        CompletionRequestKind::OpenPopup,
+                                    ) {
                                         let _ = pty_tx.send(vec![0x09]).await;
                                     }
                                 } else {
@@ -869,6 +950,7 @@ pub async fn run_proxy() -> Result<i32> {
                                         mode: &mut mode,
                                     })
                                     .await;
+                                    pending_completion = None;
                                     let _ = pty_tx.send(apply_completion_edit(&edit)).await;
                                 }
                             }
@@ -884,6 +966,7 @@ pub async fn run_proxy() -> Result<i32> {
                                     mode: &mut mode,
                                 })
                                 .await;
+                                pending_completion = None;
                                 if action == InputAction::CtrlC {
                                     line_state.clear();
                                     let _ = pty_tx.send(vec![0x03]).await;
@@ -899,26 +982,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     &mut last_cursor_col,
                                 );
                                 let _ = pty_tx.send(vec![0x7f]).await;
-                                popup_row = last_cursor_row;
-                                popup_col = last_cursor_col;
-                                refresh_popup_completion(
-                                    &mut engine,
-                                    &mut matcher,
-                                    &line_state,
+                                let _ = queue_completion_request(
+                                    &completion_tx,
+                                    &mut pending_completion,
+                                    &mut next_completion_request_id,
+                                    line_state.before_cursor(),
                                     &current_cwd,
-                                    PopupRefreshState {
-                                        renderer: &renderer,
-                                        popup: &mut popup,
-                                        stdout_tx: &stdout_tx,
-                                        popup_row,
-                                        popup_col,
-                                        popup_col_actual: &mut popup_col_actual,
-                                        popup_lines: &mut popup_lines,
-                                        popup_partial_len: &mut popup_partial_len,
-                                        mode: &mut mode,
-                                    },
-                                )
-                                .await;
+                                    CompletionRequestKind::RefreshPopup,
+                                );
                             }
                             InputAction::Delete => {
                                 let _ = line_state.delete();
@@ -930,26 +1001,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     &mut last_cursor_col,
                                 );
                                 let _ = pty_tx.send(bytes.to_vec()).await;
-                                popup_row = last_cursor_row;
-                                popup_col = last_cursor_col;
-                                refresh_popup_completion(
-                                    &mut engine,
-                                    &mut matcher,
-                                    &line_state,
+                                let _ = queue_completion_request(
+                                    &completion_tx,
+                                    &mut pending_completion,
+                                    &mut next_completion_request_id,
+                                    line_state.before_cursor(),
                                     &current_cwd,
-                                    PopupRefreshState {
-                                        renderer: &renderer,
-                                        popup: &mut popup,
-                                        stdout_tx: &stdout_tx,
-                                        popup_row,
-                                        popup_col,
-                                        popup_col_actual: &mut popup_col_actual,
-                                        popup_lines: &mut popup_lines,
-                                        popup_partial_len: &mut popup_partial_len,
-                                        mode: &mut mode,
-                                    },
-                                )
-                                .await;
+                                    CompletionRequestKind::RefreshPopup,
+                                );
                             }
                             InputAction::Left
                             | InputAction::Right
@@ -978,26 +1037,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     &mut last_cursor_col,
                                 );
                                 let _ = pty_tx.send(bytes.to_vec()).await;
-                                popup_row = last_cursor_row;
-                                popup_col = last_cursor_col;
-                                refresh_popup_completion(
-                                    &mut engine,
-                                    &mut matcher,
-                                    &line_state,
+                                let _ = queue_completion_request(
+                                    &completion_tx,
+                                    &mut pending_completion,
+                                    &mut next_completion_request_id,
+                                    line_state.before_cursor(),
                                     &current_cwd,
-                                    PopupRefreshState {
-                                        renderer: &renderer,
-                                        popup: &mut popup,
-                                        stdout_tx: &stdout_tx,
-                                        popup_row,
-                                        popup_col,
-                                        popup_col_actual: &mut popup_col_actual,
-                                        popup_lines: &mut popup_lines,
-                                        popup_partial_len: &mut popup_partial_len,
-                                        mode: &mut mode,
-                                    },
-                                )
-                                .await;
+                                    CompletionRequestKind::RefreshPopup,
+                                );
                             }
                             InputAction::KillWord => {
                                 let _ = line_state.kill_last_word();
@@ -1009,26 +1056,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     &mut last_cursor_col,
                                 );
                                 let _ = pty_tx.send(bytes.to_vec()).await;
-                                popup_row = last_cursor_row;
-                                popup_col = last_cursor_col;
-                                refresh_popup_completion(
-                                    &mut engine,
-                                    &mut matcher,
-                                    &line_state,
+                                let _ = queue_completion_request(
+                                    &completion_tx,
+                                    &mut pending_completion,
+                                    &mut next_completion_request_id,
+                                    line_state.before_cursor(),
                                     &current_cwd,
-                                    PopupRefreshState {
-                                        renderer: &renderer,
-                                        popup: &mut popup,
-                                        stdout_tx: &stdout_tx,
-                                        popup_row,
-                                        popup_col,
-                                        popup_col_actual: &mut popup_col_actual,
-                                        popup_lines: &mut popup_lines,
-                                        popup_partial_len: &mut popup_partial_len,
-                                        mode: &mut mode,
-                                    },
-                                )
-                                .await;
+                                    CompletionRequestKind::RefreshPopup,
+                                );
                             }
                             InputAction::KillLine => {
                                 let _ = line_state.kill_line();
@@ -1040,26 +1075,14 @@ pub async fn run_proxy() -> Result<i32> {
                                     &mut last_cursor_col,
                                 );
                                 let _ = pty_tx.send(bytes.to_vec()).await;
-                                popup_row = last_cursor_row;
-                                popup_col = last_cursor_col;
-                                refresh_popup_completion(
-                                    &mut engine,
-                                    &mut matcher,
-                                    &line_state,
+                                let _ = queue_completion_request(
+                                    &completion_tx,
+                                    &mut pending_completion,
+                                    &mut next_completion_request_id,
+                                    line_state.before_cursor(),
                                     &current_cwd,
-                                    PopupRefreshState {
-                                        renderer: &renderer,
-                                        popup: &mut popup,
-                                        stdout_tx: &stdout_tx,
-                                        popup_row,
-                                        popup_col,
-                                        popup_col_actual: &mut popup_col_actual,
-                                        popup_lines: &mut popup_lines,
-                                        popup_partial_len: &mut popup_partial_len,
-                                        mode: &mut mode,
-                                    },
-                                )
-                                .await;
+                                    CompletionRequestKind::RefreshPopup,
+                                );
                             }
                             InputAction::Passthrough => {
                                 track_passthrough_insert(
@@ -1084,6 +1107,7 @@ pub async fn run_proxy() -> Result<i32> {
                                     mode: &mut mode,
                                 })
                                 .await;
+                                pending_completion = None;
                                 let _ = pty_tx.send(bytes.to_vec()).await;
                             }
                         },
@@ -1093,26 +1117,92 @@ pub async fn run_proxy() -> Result<i32> {
                 if !passthrough_buf.is_empty() {
                     flush_passthrough_buffer(&pty_tx, &mut passthrough_buf).await;
                     if mode == Mode::PopupActive {
+                        let _ = queue_completion_request(
+                            &completion_tx,
+                            &mut pending_completion,
+                            &mut next_completion_request_id,
+                            line_state.before_cursor(),
+                            &current_cwd,
+                            CompletionRequestKind::RefreshPopup,
+                        );
+                    }
+                }
+            }
+
+            // Completion results from the worker
+            Some(response) = completion_rx.recv() => {
+                let Some(pending) = pending_completion else {
+                    continue;
+                };
+                if response.id != pending.id {
+                    continue;
+                }
+                pending_completion = None;
+
+                if response.input != line_state.before_cursor() || response.cwd != current_cwd {
+                    continue;
+                }
+
+                match response.kind {
+                    CompletionRequestKind::OpenPopup => {
+                        if response.scored.is_empty() {
+                            popup_partial_len = 0;
+                            if mode == Mode::Passthrough {
+                                let _ = pty_tx.send(vec![0x09]).await;
+                            }
+                            continue;
+                        }
+
+                        popup_partial_len = response.partial_len;
+                        let clear_row = popup_row;
+                        let mut render_buf = Vec::new();
+                        if popup_lines > 0 {
+                            let _ = renderer.clear(&mut render_buf, clear_row, popup_col_actual, popup_lines);
+                        }
                         popup_row = last_cursor_row;
                         popup_col = last_cursor_col;
-                        refresh_popup_completion(
-                            &mut engine,
-                            &mut matcher,
-                            &line_state,
-                            &current_cwd,
-                            PopupRefreshState {
+                        popup.set_items(response.scored);
+                        mode = Mode::PopupActive;
+                        let (lines, col) = renderer
+                            .render(&mut render_buf, &popup, popup_row, popup_col)
+                            .unwrap_or((0, popup_col));
+                        popup_lines = lines;
+                        popup_col_actual = col;
+                        let _ = stdout_tx.send(render_buf).await;
+                    }
+                    CompletionRequestKind::RefreshPopup => {
+                        if mode != Mode::PopupActive {
+                            continue;
+                        }
+
+                        if response.scored.is_empty() {
+                            close_popup(PopupCloseState {
                                 renderer: &renderer,
                                 popup: &mut popup,
                                 stdout_tx: &stdout_tx,
                                 popup_row,
-                                popup_col,
-                                popup_col_actual: &mut popup_col_actual,
+                                popup_col_actual,
                                 popup_lines: &mut popup_lines,
                                 popup_partial_len: &mut popup_partial_len,
                                 mode: &mut mode,
-                            },
-                        )
-                        .await;
+                            })
+                            .await;
+                            continue;
+                        }
+
+                        popup_partial_len = response.partial_len;
+                        let clear_row = popup_row;
+                        let mut render_buf = Vec::new();
+                        let _ = renderer.clear(&mut render_buf, clear_row, popup_col_actual, popup_lines);
+                        popup_row = last_cursor_row;
+                        popup_col = last_cursor_col;
+                        popup.set_items_preserve_selection(response.scored);
+                        let (lines, col) = renderer
+                            .render(&mut render_buf, &popup, popup_row, popup_col)
+                            .unwrap_or((0, popup_col_actual));
+                        popup_lines = lines;
+                        popup_col_actual = col;
+                        let _ = stdout_tx.send(render_buf).await;
                     }
                 }
             }
@@ -1121,6 +1211,7 @@ pub async fn run_proxy() -> Result<i32> {
             Some(data) = pty_out_rx.recv() => {
                 track_pty_output(
                     &data,
+                    &mut pty_pending_bytes,
                     &mut current_cwd,
                     &mut osc_capture,
                     &mut last_cursor_row,
@@ -1130,8 +1221,9 @@ pub async fn run_proxy() -> Result<i32> {
             }
 
             // Child process exited
-            Some(_success) = child_rx.recv() => {
+            Some(exit_code) = child_rx.recv() => {
                 child_exited = true;
+                child_exit_code = exit_code;
                 // Clean up popup if active
                 if mode == Mode::PopupActive {
                     close_popup(PopupCloseState {
@@ -1159,9 +1251,11 @@ pub async fn run_proxy() -> Result<i32> {
 
     // Cleanup
     shutdown.notify_waiters();
+    drop(completion_tx); // Stop completion worker input
     drop(stdout_tx); // Close stdout channel
     drop(pty_tx); // Close PTY write channel
     sigwinch_handle.abort();
+    completion_handle.abort();
     stdin_handle.abort();
     pty_read_handle.abort();
     pty_write_handle.abort();
@@ -1171,7 +1265,7 @@ pub async fn run_proxy() -> Result<i32> {
     // Restore terminal
     let _ = crossterm::terminal::disable_raw_mode();
 
-    Ok(if child_exited { 0 } else { 1 })
+    Ok(if child_exited { child_exit_code } else { 1 })
 }
 
 #[cfg(test)]
@@ -1193,15 +1287,24 @@ mod tests {
     #[test]
     fn test_track_pty_output_updates_cwd_and_cursor() {
         let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
         let mut osc_capture = None;
         let mut row = 0;
         let mut col = 0;
 
-        track_pty_output(b"abc", &mut cwd, &mut osc_capture, &mut row, &mut col);
+        track_pty_output(
+            b"abc",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
         assert_eq!((row, col), (0, 3));
 
         track_pty_output(
             b"\x1b[10G\x1b[2D",
+            &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
             &mut row,
@@ -1211,11 +1314,106 @@ mod tests {
 
         track_pty_output(
             b"\x1b]7;file://localhost/tmp/project\x07",
+            &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
             &mut row,
             &mut col,
         );
         assert_eq!(cwd, "/tmp/project");
+    }
+
+    #[test]
+    fn test_track_pty_output_preserves_split_csi_sequence() {
+        let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
+        let mut osc_capture = None;
+        let mut row = 0;
+        let mut col = 5;
+
+        track_pty_output(
+            b"\x1b[10",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
+        assert_eq!(pending_bytes, b"\x1b[10");
+        assert_eq!((row, col), (0, 5));
+
+        track_pty_output(
+            b"G",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
+        assert!(pending_bytes.is_empty());
+        assert_eq!((row, col), (0, 9));
+    }
+
+    #[test]
+    fn test_track_pty_output_uses_display_width_for_wide_glyphs() {
+        let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
+        let mut osc_capture = None;
+        let mut row = 0;
+        let mut col = 0;
+
+        track_pty_output(
+            "a🦀".as_bytes(),
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
+        assert_eq!((row, col), (0, 3));
+    }
+
+    #[test]
+    fn test_track_pty_output_waits_for_complete_utf8_sequence() {
+        let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
+        let mut osc_capture = None;
+        let mut row = 0;
+        let mut col = 0;
+        let crab = "🦀".as_bytes();
+
+        track_pty_output(
+            &crab[..2],
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
+        assert_eq!((row, col), (0, 0));
+        assert_eq!(pending_bytes, crab[..2]);
+
+        track_pty_output(
+            &crab[2..],
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut row,
+            &mut col,
+        );
+        assert!(pending_bytes.is_empty());
+        assert_eq!((row, col), (0, 2));
+    }
+
+    #[test]
+    fn test_exit_status_code_preserves_process_exit_code() {
+        let status = portable_pty::ExitStatus::with_exit_code(7);
+        assert_eq!(exit_status_code(status), 7);
+    }
+
+    #[test]
+    fn test_exit_status_code_uses_portable_signal_fallback_code() {
+        let status = portable_pty::ExitStatus::with_signal("TERM");
+        assert_eq!(exit_status_code(status), 1);
     }
 }
