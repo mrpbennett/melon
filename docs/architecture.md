@@ -72,24 +72,24 @@ current_line
 
 ## Module Reference
 
-| Path | Responsibility |
-|------|---------------|
-| `src/main.rs` | CLI (clap), logging setup, entry point |
-| `src/config.rs` | `~/.config/melon/config.toml` loading |
-| `src/pty/proxy.rs` | Core proxy loop + state machine |
-| `src/pty/signals.rs` | SIGWINCH forwarding to PTY |
-| `src/input/parser.rs` | Command-line tokenizer (quotes, pipes, `&&`, escapes) |
-| `src/input/trigger.rs` | Raw byte → `InputAction` classification |
-| `src/completion/spec.rs` | Rust structs for Fig spec types (serde) |
-| `src/completion/loader.rs` | Load specs from disk + embedded |
-| `src/completion/engine.rs` | Spec tree walker → candidates |
-| `src/completion/matcher.rs` | nucleo fuzzy matching wrapper |
-| `src/completion/source.rs` | `CompletionSource` trait, `PathSource` |
-| `src/ui/popup.rs` | Selection state, scroll, wrap-around navigation |
-| `src/ui/render.rs` | ANSI escape sequence popup drawing |
-| `src/ui/theme.rs` | Colors (Catppuccin dark), rounded borders, dimensions |
-| `src/shell/detect.rs` | `$SHELL` detection (zsh/bash/fish) |
-| `src/shell/cursor.rs` | Cursor position estimation for popup placement |
+| Path                        | Responsibility                                        |
+| --------------------------- | ----------------------------------------------------- |
+| `src/main.rs`               | CLI (clap), logging setup, entry point                |
+| `src/config.rs`             | `~/.config/melon/config.toml` loading                 |
+| `src/pty/proxy.rs`          | Core proxy loop + state machine                       |
+| `src/pty/signals.rs`        | SIGWINCH forwarding to PTY                            |
+| `src/input/parser.rs`       | Command-line tokenizer (quotes, pipes, `&&`, escapes) |
+| `src/input/trigger.rs`      | Raw byte → `InputAction` classification               |
+| `src/completion/spec.rs`    | Rust structs for Fig spec types (serde)               |
+| `src/completion/loader.rs`  | Load specs from disk + embedded                       |
+| `src/completion/engine.rs`  | Spec tree walker → candidates                         |
+| `src/completion/matcher.rs` | nucleo fuzzy matching wrapper                         |
+| `src/completion/source.rs`  | `CompletionSource` trait, `PathSource`                |
+| `src/ui/popup.rs`           | Selection state, scroll, wrap-around navigation       |
+| `src/ui/render.rs`          | ANSI escape sequence popup drawing                    |
+| `src/ui/theme.rs`           | Colors (Catppuccin dark), rounded borders, dimensions |
+| `src/shell/detect.rs`       | `$SHELL` detection (zsh/bash/fish)                    |
+| `src/shell/cursor.rs`       | Cursor position estimation for popup placement        |
 
 ## Spec Format
 
@@ -124,11 +124,11 @@ Key types: `Spec`, `Subcommand`, `Opt`, `Arg`, `StringOrArray`, `ArgOrArgs`, `Te
 
 ## Environment Variables
 
-| Variable | Purpose |
-|----------|---------|
+| Variable  | Purpose                                                                      |
+| --------- | ---------------------------------------------------------------------------- |
 | `MELON=1` | Set inside the PTY so the shell knows it's wrapped (prevents recursive exec) |
-| `SHELL` | Used to detect which shell to spawn |
-| `TERM` | Passed through to the child shell |
+| `SHELL`   | Used to detect which shell to spawn                                          |
+| `TERM`    | Passed through to the child shell                                            |
 
 ## Testing
 

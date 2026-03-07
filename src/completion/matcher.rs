@@ -18,33 +18,46 @@ impl FuzzyMatcher {
 
     /// Filter and rank candidates against the given pattern.
     /// Returns candidates sorted by match score (best first).
-    pub fn filter(&mut self, pattern: &str, candidates: Vec<CompletionCandidate>) -> Vec<ScoredCandidate> {
+    pub fn filter(
+        &mut self,
+        pattern: &str,
+        candidates: Vec<CompletionCandidate>,
+    ) -> Vec<ScoredCandidate> {
         if pattern.is_empty() {
             // No filtering needed — return all with equal score
             return candidates
                 .into_iter()
-                .map(|c| ScoredCandidate { candidate: c, score: 0 })
+                .map(|c| ScoredCandidate {
+                    candidate: c,
+                    score: 0,
+                })
                 .collect();
         }
 
-        let pat = Pattern::new(pattern, CaseMatching::Smart, Normalization::Smart, AtomKind::Fuzzy);
-
-        let mut scored: Vec<ScoredCandidate> = candidates
-            .into_iter()
-            .filter_map(|candidate| {
-                let mut buf = Vec::new();
-                let haystack = Utf32Str::new(&candidate.name, &mut buf);
-                let score = pat.score(haystack, &mut self.matcher)?;
-                Some(ScoredCandidate {
+        let pat = Pattern::new(
+            pattern,
+            CaseMatching::Smart,
+            Normalization::Smart,
+            AtomKind::Fuzzy,
+        );
+        let mut scored = Vec::with_capacity(candidates.len());
+        let mut utf32_buf = Vec::new();
+        for candidate in candidates {
+            utf32_buf.clear();
+            let haystack = Utf32Str::new(&candidate.name, &mut utf32_buf);
+            if let Some(score) = pat.score(haystack, &mut self.matcher) {
+                scored.push(ScoredCandidate {
                     candidate,
                     score: score as i64,
-                })
-            })
-            .collect();
+                });
+            }
+        }
 
         // Sort by score descending, then alphabetically for ties
-        scored.sort_by(|a, b| {
-            b.score.cmp(&a.score).then_with(|| a.candidate.name.cmp(&b.candidate.name))
+        scored.sort_unstable_by(|a, b| {
+            b.score
+                .cmp(&a.score)
+                .then_with(|| a.candidate.name.cmp(&b.candidate.name))
         });
 
         scored

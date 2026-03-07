@@ -136,11 +136,39 @@ impl StringOrArray {
         }
     }
 
-    /// Get all name variants.
-    pub fn all(&self) -> Vec<&str> {
+    /// Iterate over all name variants without allocating.
+    pub fn iter(&self) -> StringOrArrayIter<'_> {
         match self {
-            StringOrArray::Single(s) => vec![s.as_str()],
-            StringOrArray::Multiple(v) => v.iter().map(|s| s.as_str()).collect(),
+            StringOrArray::Single(s) => StringOrArrayIter::Single(Some(s.as_str())),
+            StringOrArray::Multiple(v) => StringOrArrayIter::Multiple(v.iter()),
+        }
+    }
+
+    /// Check whether any alias exactly matches `needle`.
+    pub fn contains(&self, needle: &str) -> bool {
+        self.iter().any(|name| name == needle)
+    }
+
+    /// Pick a stable display name for UI output, preferring the long option form.
+    pub fn preferred(&self) -> &str {
+        self.iter()
+            .find(|name| name.starts_with("--"))
+            .unwrap_or_else(|| self.primary())
+    }
+}
+
+pub enum StringOrArrayIter<'a> {
+    Single(Option<&'a str>),
+    Multiple(std::slice::Iter<'a, String>),
+}
+
+impl<'a> Iterator for StringOrArrayIter<'a> {
+    type Item = &'a str;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            StringOrArrayIter::Single(value) => value.take(),
+            StringOrArrayIter::Multiple(iter) => iter.next().map(|value| value.as_str()),
         }
     }
 }
@@ -156,11 +184,45 @@ pub enum ArgOrArgs {
 }
 
 impl ArgOrArgs {
-    pub fn as_slice(&self) -> Vec<&Arg> {
+    pub fn iter(&self) -> ArgOrArgsIter<'_> {
         match self {
-            ArgOrArgs::None => vec![],
-            ArgOrArgs::Single(a) => vec![a],
-            ArgOrArgs::Multiple(v) => v.iter().collect(),
+            ArgOrArgs::None => ArgOrArgsIter::None,
+            ArgOrArgs::Single(arg) => ArgOrArgsIter::Single(Some(arg)),
+            ArgOrArgs::Multiple(args) => ArgOrArgsIter::Multiple(args.iter()),
+        }
+    }
+
+    pub fn first(&self) -> Option<&Arg> {
+        match self {
+            ArgOrArgs::None => None,
+            ArgOrArgs::Single(arg) => Some(arg),
+            ArgOrArgs::Multiple(args) => args.first(),
+        }
+    }
+
+    pub fn is_empty(&self) -> bool {
+        matches!(self, ArgOrArgs::None)
+    }
+
+    pub fn as_slice(&self) -> Vec<&Arg> {
+        self.iter().collect()
+    }
+}
+
+pub enum ArgOrArgsIter<'a> {
+    None,
+    Single(Option<&'a Arg>),
+    Multiple(std::slice::Iter<'a, Arg>),
+}
+
+impl<'a> Iterator for ArgOrArgsIter<'a> {
+    type Item = &'a Arg;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            ArgOrArgsIter::None => None,
+            ArgOrArgsIter::Single(value) => value.take(),
+            ArgOrArgsIter::Multiple(iter) => iter.next(),
         }
     }
 }
@@ -225,7 +287,10 @@ mod tests {
         assert_eq!(spec.name.primary(), "git");
         assert_eq!(spec.subcommands.len(), 1);
         assert_eq!(spec.subcommands[0].name.primary(), "commit");
-        assert_eq!(spec.subcommands[0].name.all(), vec!["commit", "ci"]);
+        assert_eq!(
+            spec.subcommands[0].name.iter().collect::<Vec<_>>(),
+            vec!["commit", "ci"]
+        );
         assert_eq!(spec.subcommands[0].options.len(), 2);
         assert_eq!(spec.options.len(), 1);
     }
@@ -244,7 +309,10 @@ mod tests {
         let args = spec.args.as_slice();
         assert_eq!(args.len(), 1);
         assert!(args[0].is_variadic);
-        assert!(matches!(args[0].template, Some(Template::Single(TemplateKind::Filepaths))));
+        assert!(matches!(
+            args[0].template,
+            Some(Template::Single(TemplateKind::Filepaths))
+        ));
     }
 
     #[test]

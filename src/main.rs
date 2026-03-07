@@ -1,15 +1,3 @@
-#[allow(dead_code)]
-mod config;
-#[allow(dead_code)]
-mod completion;
-#[allow(dead_code)]
-mod input;
-mod pty;
-#[allow(dead_code)]
-mod shell;
-#[allow(dead_code)]
-mod ui;
-
 use anyhow::Result;
 use clap::Parser;
 
@@ -47,7 +35,7 @@ async fn main() -> Result<()> {
             .init();
     }
 
-    let exit_code = pty::proxy::run_proxy().await?;
+    let exit_code = melon::pty::proxy::run_proxy().await?;
     std::process::exit(exit_code);
 }
 

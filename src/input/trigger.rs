@@ -1,10 +1,9 @@
-/// Key classification for the completion state machine.
-
+//! Key classification for the completion state machine.
 /// Actions that the input processor can produce.
 #[derive(Debug, Clone, PartialEq)]
 pub enum InputAction {
     /// Normal character — passthrough to PTY.
-    Passthrough(Vec<u8>),
+    Passthrough,
     /// Tab pressed — activate/cycle completion.
     Tab,
     /// Shift+Tab — cycle completion backwards.
@@ -37,7 +36,7 @@ pub enum InputAction {
 /// Returns the action and number of bytes consumed.
 pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
     if buf.is_empty() {
-        return (InputAction::Passthrough(vec![]), 0);
+        return (InputAction::Passthrough, 0);
     }
 
     // Tab
@@ -87,12 +86,12 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
                 }
                 end += 1;
             }
-            return (InputAction::Passthrough(buf[..end].to_vec()), end);
+            return (InputAction::Passthrough, end);
         }
 
         // Alt+key or other escape sequences — passthrough
         let len = buf.len().min(2);
-        return (InputAction::Passthrough(buf[..len].to_vec()), len);
+        return (InputAction::Passthrough, len);
     }
 
     // Enter (CR only; LF/0x0a is Ctrl-J and handled separately)
@@ -136,7 +135,7 @@ pub fn classify_input(buf: &[u8]) -> (InputAction, usize) {
         4.min(buf.len())
     };
 
-    (InputAction::Passthrough(buf[..len].to_vec()), len)
+    (InputAction::Passthrough, len)
 }
 
 #[cfg(test)]
@@ -173,7 +172,7 @@ mod tests {
     #[test]
     fn test_regular_char() {
         let (action, consumed) = classify_input(b"a");
-        assert_eq!(action, InputAction::Passthrough(vec![b'a']));
+        assert_eq!(action, InputAction::Passthrough);
         assert_eq!(consumed, 1);
     }
 

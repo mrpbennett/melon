@@ -36,6 +36,101 @@ fn kill_last_word(line: &mut String) {
     }
 }
 
+fn drain_channel_batch(receiver: &mut mpsc::Receiver<Vec<u8>>, mut batch: Vec<u8>) -> Vec<u8> {
+    while let Ok(next) = receiver.try_recv() {
+        batch.extend_from_slice(&next);
+    }
+    batch
+}
+
+fn track_passthrough_in_passthrough_mode(current_line: &mut String, bytes: &[u8]) {
+    if bytes.first() == Some(&0x1b) {
+        return;
+    }
+
+    for &b in bytes {
+        if b == b'\r' || b == b'\n' {
+            current_line.clear();
+        } else if b == 0x7f || b == 0x08 {
+            current_line.pop();
+        } else if b >= 0x20 {
+            current_line.push(b as char);
+        }
+    }
+}
+
+fn track_passthrough_in_popup(current_line: &mut String, bytes: &[u8]) {
+    for &b in bytes {
+        if b >= 0x20 {
+            current_line.push(b as char);
+        }
+    }
+}
+
+async fn flush_passthrough_buffer(pty_tx: &mpsc::Sender<Vec<u8>>, passthrough_buf: &mut Vec<u8>) {
+    if passthrough_buf.is_empty() {
+        return;
+    }
+
+    let pending = std::mem::take(passthrough_buf);
+    let _ = pty_tx.send(pending).await;
+}
+
+struct PopupRefreshState<'a> {
+    renderer: &'a PopupRenderer,
+    popup: &'a mut PopupState,
+    stdout_tx: &'a mpsc::Sender<Vec<u8>>,
+    popup_row: u16,
+    popup_col: u16,
+    popup_col_actual: &'a mut u16,
+    popup_lines: &'a mut u16,
+    popup_partial_len: &'a mut usize,
+    mode: &'a mut Mode,
+}
+
+async fn refresh_popup_completion(
+    engine: &mut CompletionEngine,
+    matcher: &mut FuzzyMatcher,
+    current_line: &str,
+    state: PopupRefreshState<'_>,
+) {
+    let PopupRefreshState {
+        renderer,
+        popup,
+        stdout_tx,
+        popup_row,
+        popup_col,
+        popup_col_actual,
+        popup_lines,
+        popup_partial_len,
+        mode,
+    } = state;
+
+    let completion = engine.complete(current_line);
+    let scored = matcher.filter(&completion.partial, completion.candidates);
+
+    if !scored.is_empty() {
+        *popup_partial_len = completion.partial.len();
+        let mut render_buf = Vec::new();
+        let _ = renderer.clear(&mut render_buf, popup_row, *popup_col_actual, *popup_lines);
+        popup.set_items(scored);
+        let (lines, col) = renderer
+            .render(&mut render_buf, popup, popup_row, popup_col)
+            .unwrap_or((0, *popup_col_actual));
+        *popup_lines = lines;
+        *popup_col_actual = col;
+        let _ = stdout_tx.send(render_buf).await;
+    } else {
+        let mut clear_buf = Vec::new();
+        let _ = renderer.clear(&mut clear_buf, popup_row, *popup_col_actual, *popup_lines);
+        let _ = stdout_tx.send(clear_buf).await;
+        popup.dismiss();
+        *popup_lines = 0;
+        *popup_partial_len = 0;
+        *mode = Mode::Passthrough;
+    }
+}
+
 /// Spawn the user's shell inside a PTY and proxy I/O between the host terminal
 /// and the child PTY. Returns the child exit code.
 pub async fn run_proxy() -> Result<i32> {
@@ -57,7 +152,7 @@ pub async fn run_proxy() -> Result<i32> {
     let cmd_count = store.len();
     tracing::info!(cmd_count, "total completion specs loaded");
 
-    let engine = CompletionEngine::new(store);
+    let mut engine = CompletionEngine::new(store);
     let mut matcher = FuzzyMatcher::new();
 
     // Get current terminal size
@@ -76,7 +171,10 @@ pub async fn run_proxy() -> Result<i32> {
 
     // Build shell command
     let mut cmd = CommandBuilder::new(&shell_path);
-    cmd.env("TERM", std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_string()));
+    cmd.env(
+        "TERM",
+        std::env::var("TERM").unwrap_or_else(|_| "xterm-256color".to_string()),
+    );
     cmd.env("MELON", "1");
 
     // Spawn the shell
@@ -92,9 +190,7 @@ pub async fn run_proxy() -> Result<i32> {
     let mut pty_reader = master
         .try_clone_reader()
         .context("failed to clone PTY reader")?;
-    let mut pty_writer = master
-        .take_writer()
-        .context("failed to take PTY writer")?;
+    let mut pty_writer = master.take_writer().context("failed to take PTY writer")?;
 
     // Put host terminal into raw mode
     crossterm::terminal::enable_raw_mode().context("failed to enable raw mode")?;
@@ -137,10 +233,10 @@ pub async fn run_proxy() -> Result<i32> {
     // Task: channel → PTY writer
     let pty_write_handle = tokio::task::spawn_blocking(move || {
         while let Some(data) = pty_rx.blocking_recv() {
-            if pty_writer.write_all(&data).is_err() {
+            let batch = drain_channel_batch(&mut pty_rx, data);
+            if pty_writer.write_all(&batch).is_err() {
                 break;
             }
-            let _ = pty_writer.flush();
         }
     });
 
@@ -175,8 +271,13 @@ pub async fn run_proxy() -> Result<i32> {
     let stdout_write_handle = tokio::task::spawn_blocking(move || {
         let mut stdout = std::io::stdout().lock();
         while let Some(data) = stdout_rx.blocking_recv() {
-            let _ = stdout.write_all(&data);
-            let _ = stdout.flush();
+            let batch = drain_channel_batch(&mut stdout_rx, data);
+            if stdout.write_all(&batch).is_err() {
+                break;
+            }
+            if stdout.flush().is_err() {
+                break;
+            }
         }
     });
 
@@ -205,6 +306,7 @@ pub async fn run_proxy() -> Result<i32> {
     let mut mode = Mode::Passthrough;
     let mut current_line = String::new();
     let mut popup_lines: u16 = 0;
+    let mut popup_partial_len: usize = 0;
     // Cursor tracking: initialised from DSR query, updated via PTY output newlines.
     let mut last_cursor_row: u16 = init_row;
     let mut last_cursor_col: u16 = init_col;
@@ -220,10 +322,30 @@ pub async fn run_proxy() -> Result<i32> {
             // Input from stdin
             Some(raw) = stdin_rx.recv() => {
                 let mut offset = 0;
+                let mut passthrough_buf = Vec::new();
                 while offset < raw.len() {
                     let (action, consumed) = classify_input(&raw[offset..]);
                     if consumed == 0 { break; }
                     offset += consumed;
+                    let bytes = &raw[offset - consumed..offset];
+
+                    if !matches!(action, InputAction::Passthrough) && !passthrough_buf.is_empty() {
+                        flush_passthrough_buffer(&pty_tx, &mut passthrough_buf).await;
+                        if mode == Mode::PopupActive {
+                            refresh_popup_completion(&mut engine, &mut matcher, &current_line, PopupRefreshState {
+                                renderer: &renderer,
+                                popup: &mut popup,
+                                stdout_tx: &stdout_tx,
+                                popup_row,
+                                popup_col,
+                                popup_col_actual: &mut popup_col_actual,
+                                popup_lines: &mut popup_lines,
+                                popup_partial_len: &mut popup_partial_len,
+                                mode: &mut mode,
+                            })
+                            .await;
+                        }
+                    }
 
                     match mode {
                         Mode::Passthrough => {
@@ -231,10 +353,11 @@ pub async fn run_proxy() -> Result<i32> {
                                 InputAction::Tab => {
                                     // Trigger completion
                                     if !current_line.trim().is_empty() {
-                                        let (_, partial) = crate::input::parser::split_partial(&current_line);
-                                        let candidates = engine.complete(&current_line);
-                                        let scored = matcher.filter(&partial, candidates);
+                                        let completion = engine.complete(&current_line);
+                                        let scored =
+                                            matcher.filter(&completion.partial, completion.candidates);
                                         if !scored.is_empty() {
+                                            popup_partial_len = completion.partial.len();
                                             popup.set_items(scored);
                                             mode = Mode::PopupActive;
                                             // Snapshot cursor position for this popup's lifetime.
@@ -248,6 +371,7 @@ pub async fn run_proxy() -> Result<i32> {
                                             popup_col_actual = col;
                                             let _ = stdout_tx.send(render_buf).await;
                                         } else {
+                                            popup_partial_len = 0;
                                             // No completions — pass tab through
                                             let _ = pty_tx.send(vec![0x09]).await;
                                         }
@@ -255,22 +379,9 @@ pub async fn run_proxy() -> Result<i32> {
                                         let _ = pty_tx.send(vec![0x09]).await;
                                     }
                                 }
-                                InputAction::Passthrough(bytes) => {
-                                    // Track the current line — but skip escape sequences
-                                    // (e.g. DSR responses like \x1b[24;1R, mouse events)
-                                    // so they don't corrupt our current_line state.
-                                    if bytes.first() != Some(&0x1b) {
-                                        for &b in &bytes {
-                                            if b == b'\r' || b == b'\n' {
-                                                current_line.clear();
-                                            } else if b == 0x7f || b == 0x08 {
-                                                current_line.pop();
-                                            } else if b >= 0x20 {
-                                                current_line.push(b as char);
-                                            }
-                                        }
-                                    }
-                                    let _ = pty_tx.send(bytes).await;
+                                InputAction::Passthrough => {
+                                    track_passthrough_in_passthrough_mode(&mut current_line, bytes);
+                                    passthrough_buf.extend_from_slice(bytes);
                                 }
                                 InputAction::Enter => {
                                     current_line.clear();
@@ -338,14 +449,10 @@ pub async fn run_proxy() -> Result<i32> {
                                         let _ = stdout_tx.send(clear_buf).await;
 
                                         // Calculate how much to backspace (remove partial)
-                                        let (_, partial) = crate::input::parser::split_partial(&current_line);
-                                        let backspaces = partial.len();
+                                        let backspaces = popup_partial_len;
 
                                         // Send backspaces to delete partial
-                                        let mut edit_bytes = Vec::new();
-                                        for _ in 0..backspaces {
-                                            edit_bytes.push(0x7f);
-                                        }
+                                        let mut edit_bytes = vec![0x7f; backspaces];
                                         // Then send the completed text
                                         edit_bytes.extend_from_slice(text.as_bytes());
                                         let _ = pty_tx.send(edit_bytes).await;
@@ -358,6 +465,7 @@ pub async fn run_proxy() -> Result<i32> {
 
                                         popup.dismiss();
                                         popup_lines = 0;
+                                        popup_partial_len = 0;
                                         mode = Mode::Passthrough;
                                     }
                                 }
@@ -368,6 +476,7 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
+                                    popup_partial_len = 0;
                                     mode = Mode::Passthrough;
                                     if action == InputAction::CtrlC {
                                         current_line.clear();
@@ -381,6 +490,7 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
+                                    popup_partial_len = 0;
 
                                     current_line.pop();
                                     let _ = pty_tx.send(vec![0x7f]).await;
@@ -392,6 +502,7 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
+                                    popup_partial_len = 0;
 
                                     kill_last_word(&mut current_line);
                                     let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
@@ -403,43 +514,15 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
+                                    popup_partial_len = 0;
 
                                     current_line.clear();
                                     let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
                                     mode = Mode::Passthrough;
                                 }
-                                InputAction::Passthrough(bytes) => {
-                                    // Update current_line with the typed character
-                                    for &b in &bytes {
-                                        if b >= 0x20 {
-                                            current_line.push(b as char);
-                                        }
-                                    }
-                                    let _ = pty_tx.send(bytes).await;
-
-                                    // Re-run completion pipeline with updated line
-                                    let (_, partial) = crate::input::parser::split_partial(&current_line);
-                                    let candidates = engine.complete(&current_line);
-                                    let scored = matcher.filter(&partial, candidates);
-
-                                    if !scored.is_empty() {
-                                        // Clear old popup, update items, re-render
-                                        let mut render_buf = Vec::new();
-                                        let _ = renderer.clear(&mut render_buf, popup_row, popup_col_actual, popup_lines);
-                                        popup.set_items(scored);
-                                        let (lines, col) = renderer.render(&mut render_buf, &popup, popup_row, popup_col).unwrap_or((0, popup_col_actual));
-                                        popup_lines = lines;
-                                        popup_col_actual = col;
-                                        let _ = stdout_tx.send(render_buf).await;
-                                    } else {
-                                        // No matches — dismiss popup
-                                        let mut clear_buf = Vec::new();
-                                        let _ = renderer.clear(&mut clear_buf, popup_row, popup_col_actual, popup_lines);
-                                        let _ = stdout_tx.send(clear_buf).await;
-                                        popup.dismiss();
-                                        popup_lines = 0;
-                                        mode = Mode::Passthrough;
-                                    }
+                                InputAction::Passthrough => {
+                                    track_passthrough_in_popup(&mut current_line, bytes);
+                                    passthrough_buf.extend_from_slice(bytes);
                                 }
                                 _ => {
                                     // Dismiss on any other action
@@ -448,11 +531,30 @@ pub async fn run_proxy() -> Result<i32> {
                                     let _ = stdout_tx.send(clear_buf).await;
                                     popup.dismiss();
                                     popup_lines = 0;
+                                    popup_partial_len = 0;
                                     mode = Mode::Passthrough;
                                     let _ = pty_tx.send(raw[offset - consumed..offset].to_vec()).await;
                                 }
                             }
                         }
+                    }
+                }
+
+                if !passthrough_buf.is_empty() {
+                    flush_passthrough_buffer(&pty_tx, &mut passthrough_buf).await;
+                    if mode == Mode::PopupActive {
+                        refresh_popup_completion(&mut engine, &mut matcher, &current_line, PopupRefreshState {
+                            renderer: &renderer,
+                            popup: &mut popup,
+                            stdout_tx: &stdout_tx,
+                            popup_row,
+                            popup_col,
+                            popup_col_actual: &mut popup_col_actual,
+                            popup_lines: &mut popup_lines,
+                            popup_partial_len: &mut popup_partial_len,
+                            mode: &mut mode,
+                        })
+                        .await;
                     }
                 }
             }
@@ -532,7 +634,7 @@ pub async fn run_proxy() -> Result<i32> {
     // Cleanup
     shutdown.notify_waiters();
     drop(stdout_tx); // Close stdout channel
-    drop(pty_tx);    // Close PTY write channel
+    drop(pty_tx); // Close PTY write channel
     sigwinch_handle.abort();
     stdin_handle.abort();
     pty_read_handle.abort();

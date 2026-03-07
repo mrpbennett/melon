@@ -13,6 +13,12 @@ pub struct SpecStore {
     specs: HashMap<String, Spec>,
 }
 
+impl Default for SpecStore {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SpecStore {
     pub fn new() -> Self {
         Self {
@@ -90,7 +96,7 @@ impl SpecStore {
     }
 
     fn insert(&mut self, spec: Spec) {
-        for name in spec.name.all() {
+        for name in spec.name.iter() {
             self.specs.insert(name.to_string(), spec.clone());
         }
     }
@@ -110,8 +116,8 @@ impl SpecStore {
     }
 
     /// All known command names.
-    pub fn commands(&self) -> Vec<&str> {
-        self.specs.keys().map(|s| s.as_str()).collect()
+    pub fn iter_commands(&self) -> impl Iterator<Item = &str> + '_ {
+        self.specs.keys().map(|s| s.as_str())
     }
 }
 

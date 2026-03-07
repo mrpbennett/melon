@@ -20,10 +20,16 @@ pub enum TokenKind {
     Redirect,
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParsedLine {
+    pub tokens: Vec<Token>,
+    pub partial: String,
+}
+
 /// Parse a command line into tokens. Returns the tokens for the *last* simple
 /// command (after any pipe/operator), which is the one we want to complete.
 pub fn tokenize_last_command(input: &str) -> Vec<Token> {
-    let all = tokenize(input);
+    let mut all = tokenize(input);
     // Find the last pipe/operator and return everything after it
     let mut last_cmd_start = 0;
     for (i, tok) in all.iter().enumerate() {
@@ -31,7 +37,7 @@ pub fn tokenize_last_command(input: &str) -> Vec<Token> {
             last_cmd_start = i + 1;
         }
     }
-    all[last_cmd_start..].to_vec()
+    all.split_off(last_cmd_start)
 }
 
 /// Full tokenizer.
@@ -50,28 +56,47 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
         // Check for operators
         if i + 1 < len && bytes[i] == b'&' && bytes[i + 1] == b'&' {
-            tokens.push(Token { text: "&&".into(), kind: TokenKind::Operator, start: i });
+            tokens.push(Token {
+                text: "&&".into(),
+                kind: TokenKind::Operator,
+                start: i,
+            });
             i += 2;
             continue;
         }
         if i + 1 < len && bytes[i] == b'|' && bytes[i + 1] == b'|' {
-            tokens.push(Token { text: "||".into(), kind: TokenKind::Operator, start: i });
+            tokens.push(Token {
+                text: "||".into(),
+                kind: TokenKind::Operator,
+                start: i,
+            });
             i += 2;
             continue;
         }
         if bytes[i] == b'|' {
-            tokens.push(Token { text: "|".into(), kind: TokenKind::Pipe, start: i });
+            tokens.push(Token {
+                text: "|".into(),
+                kind: TokenKind::Pipe,
+                start: i,
+            });
             i += 1;
             continue;
         }
         if bytes[i] == b';' {
-            tokens.push(Token { text: ";".into(), kind: TokenKind::Operator, start: i });
+            tokens.push(Token {
+                text: ";".into(),
+                kind: TokenKind::Operator,
+                start: i,
+            });
             i += 1;
             continue;
         }
 
         // Redirects
-        if bytes[i] == b'>' || bytes[i] == b'<' || (bytes[i] == b'2' && i + 1 < len && bytes[i + 1] == b'>') {
+        if bytes[i] == b'>'
+            || bytes[i] == b'<'
+            || (bytes[i] == b'2' && i + 1 < len && bytes[i + 1] == b'>')
+        {
             let start = i;
             let mut text = String::new();
             if bytes[i] == b'2' {
@@ -84,7 +109,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                 text.push('>');
                 i += 1;
             }
-            tokens.push(Token { text, kind: TokenKind::Redirect, start });
+            tokens.push(Token {
+                text,
+                kind: TokenKind::Redirect,
+                start,
+            });
             continue;
         }
 
@@ -100,7 +129,9 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                         word.push(bytes[i] as char);
                         i += 1;
                     }
-                    if i < len { i += 1; } // skip closing quote
+                    if i < len {
+                        i += 1;
+                    } // skip closing quote
                 }
                 b'"' => {
                     // Double-quoted string: allows backslash escapes
@@ -114,7 +145,9 @@ pub fn tokenize(input: &str) -> Vec<Token> {
                         }
                         i += 1;
                     }
-                    if i < len { i += 1; } // skip closing quote
+                    if i < len {
+                        i += 1;
+                    } // skip closing quote
                 }
                 b'\\' if i + 1 < len => {
                     i += 1;
@@ -130,7 +163,11 @@ pub fn tokenize(input: &str) -> Vec<Token> {
             }
         }
         if !word.is_empty() {
-            tokens.push(Token { text: word, kind: TokenKind::Word, start });
+            tokens.push(Token {
+                text: word,
+                kind: TokenKind::Word,
+                start,
+            });
         }
     }
 
@@ -139,18 +176,22 @@ pub fn tokenize(input: &str) -> Vec<Token> {
 
 /// Determine if the cursor is in a "partial word" at the end of input.
 /// Returns (tokens_before_partial, partial_text).
-pub fn split_partial(input: &str) -> (Vec<Token>, String) {
-    let tokens = tokenize_last_command(input);
+pub fn parse_completion_input(input: &str) -> ParsedLine {
+    let mut tokens = tokenize_last_command(input);
     if input.ends_with(' ') || input.is_empty() {
-        // Cursor is after a space — no partial word
-        (tokens, String::new())
-    } else if let Some(last) = tokens.last() {
-        let partial = last.text.clone();
-        let rest = tokens[..tokens.len() - 1].to_vec();
-        (rest, partial)
+        ParsedLine {
+            tokens,
+            partial: String::new(),
+        }
     } else {
-        (vec![], String::new())
+        let partial = tokens.pop().map(|token| token.text).unwrap_or_default();
+        ParsedLine { tokens, partial }
     }
+}
+
+pub fn split_partial(input: &str) -> (Vec<Token>, String) {
+    let parsed = parse_completion_input(input);
+    (parsed.tokens, parsed.partial)
 }
 
 #[cfg(test)]
@@ -199,6 +240,14 @@ mod tests {
         assert_eq!(tokens.len(), 1);
         assert_eq!(tokens[0].text, "git");
         assert_eq!(partial, "");
+    }
+
+    #[test]
+    fn test_parse_completion_input_reuses_last_token_as_partial() {
+        let parsed = parse_completion_input("git commit");
+        assert_eq!(parsed.tokens.len(), 1);
+        assert_eq!(parsed.tokens[0].text, "git");
+        assert_eq!(parsed.partial, "commit");
     }
 
     #[test]
