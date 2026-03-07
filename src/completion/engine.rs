@@ -3,6 +3,7 @@ use super::loader::SpecStore;
 use super::source::{CompletionContext, CompletionSource, PathSource};
 use super::spec::*;
 use crate::input::parser::{self, ParsedLine};
+use std::collections::HashSet;
 
 /// The main completion engine. Given the current command line text, produces
 /// a list of completion candidates by walking the spec tree.
@@ -30,9 +31,17 @@ struct CompletionCacheKey {
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum CompletionModeKey {
     CommandName,
-    Options,
-    OptionArg { option_name: String },
-    Positional { index: usize, include_options: bool },
+    Options {
+        used_options: Vec<String>,
+    },
+    OptionArg {
+        option_name: String,
+    },
+    Positional {
+        index: usize,
+        include_options: bool,
+        used_options: Vec<String>,
+    },
 }
 
 #[derive(Clone)]
@@ -44,13 +53,14 @@ struct CachedCompletion {
 struct ResolvedContext<'a> {
     key: CompletionCacheKey,
     kind: ResolvedKind<'a>,
+    option_scope: Option<OptionScope<'a>>,
     path_context: Option<CompletionContext>,
     generator_context: Option<ResolvedGeneratorContext<'a>>,
 }
 
 enum ResolvedKind<'a> {
     CommandName,
-    Options(SpecNode<'a>),
+    Options,
     OptionArg {
         node: SpecNode<'a>,
         option_name: &'a str,
@@ -74,6 +84,18 @@ struct CandidateMetadata<'a> {
     icon: &'a Option<String>,
     insert_value: &'a Option<String>,
     priority: Option<i32>,
+}
+
+struct OptionScope<'a> {
+    all: Vec<&'a Opt>,
+    available: Vec<&'a Opt>,
+    used_options: Vec<String>,
+}
+
+struct OptionUsage<'a> {
+    used_preferred_names: HashSet<String>,
+    used_aliases: HashSet<String>,
+    used_options: Vec<&'a Opt>,
 }
 
 impl CompletionEngine {
@@ -173,6 +195,7 @@ impl CompletionEngine {
                     mode: CompletionModeKey::CommandName,
                 },
                 kind: ResolvedKind::CommandName,
+                option_scope: None,
                 path_context: None,
                 generator_context: None,
             });
@@ -180,8 +203,9 @@ impl CompletionEngine {
 
         let command = parsed.tokens[0].text.as_str();
         let spec = store.get(command)?;
-        let (subcommand_node, remaining_tokens, subcommand_chain) =
+        let (subcommand_node, remaining_tokens, subcommand_chain, subcommand_defs) =
             Self::walk_subcommands(spec, &parsed.tokens[1..]);
+        let option_scope = Self::option_scope(spec, &subcommand_defs, &remaining_tokens);
         let partial = parsed.partial.as_str();
 
         if partial.starts_with('-') {
@@ -192,18 +216,21 @@ impl CompletionEngine {
                         .iter()
                         .map(|value| (*value).to_string())
                         .collect(),
-                    mode: CompletionModeKey::Options,
+                    mode: CompletionModeKey::Options {
+                        used_options: option_scope.used_options.clone(),
+                    },
                 },
-                kind: ResolvedKind::Options(subcommand_node),
+                kind: ResolvedKind::Options,
+                option_scope: Some(option_scope),
                 path_context: None,
                 generator_context: None,
             });
         }
 
         if let Some(option_token) = remaining_tokens.last().filter(|token| {
-            token.text.starts_with('-') && Self::option_takes_arg(subcommand_node, &token.text)
+            token.text.starts_with('-') && Self::option_takes_arg(&option_scope, &token.text)
         }) {
-            let option_arg = Self::option_arg(subcommand_node, option_token.text.as_str());
+            let option_arg = Self::option_arg(&option_scope, option_token.text.as_str());
             return Some(ResolvedContext {
                 key: CompletionCacheKey {
                     command: Some(command.to_string()),
@@ -219,6 +246,7 @@ impl CompletionEngine {
                     node: subcommand_node,
                     option_name: option_token.text.as_str(),
                 },
+                option_scope: Some(option_scope),
                 path_context: option_arg
                     .filter(|arg| Self::arg_uses_path_templates(arg))
                     .map(|_| {
@@ -246,6 +274,11 @@ impl CompletionEngine {
                 mode: CompletionModeKey::Positional {
                     index: positional_index,
                     include_options,
+                    used_options: if include_options {
+                        option_scope.used_options.clone()
+                    } else {
+                        Vec::new()
+                    },
                 },
             },
             kind: ResolvedKind::Positional {
@@ -253,6 +286,7 @@ impl CompletionEngine {
                 positional_index,
                 include_options,
             },
+            option_scope: Some(option_scope),
             path_context: Self::positional_arg(subcommand_node, positional_index)
                 .filter(|arg| Self::arg_uses_path_templates(arg))
                 .map(|_| Self::make_path_context(command, &subcommand_chain, partial, false, cwd)),
@@ -277,25 +311,49 @@ impl CompletionEngine {
     ) -> Vec<CompletionCandidate> {
         match resolved.kind {
             ResolvedKind::CommandName => command_candidates.to_vec(),
-            ResolvedKind::Options(node) => Self::complete_options(node),
-            ResolvedKind::OptionArg { node, option_name } => {
-                Self::complete_option_arg(node, option_name)
-            }
+            ResolvedKind::Options => Self::complete_options(
+                resolved
+                    .option_scope
+                    .as_ref()
+                    .expect("option scope should exist for option completion"),
+            ),
+            ResolvedKind::OptionArg { node, option_name } => Self::complete_option_arg(
+                node,
+                resolved
+                    .option_scope
+                    .as_ref()
+                    .expect("option scope should exist for option-arg completion"),
+                option_name,
+            ),
             ResolvedKind::Positional {
                 node,
                 positional_index,
                 include_options,
-            } => Self::complete_positional(node, positional_index, include_options),
+            } => Self::complete_positional(
+                node,
+                resolved
+                    .option_scope
+                    .as_ref()
+                    .expect("option scope should exist for positional completion"),
+                positional_index,
+                include_options,
+            ),
         }
     }
 
     fn walk_subcommands<'a>(
         spec: &'a Spec,
         tokens: &'a [parser::Token],
-    ) -> (SpecNode<'a>, Vec<&'a parser::Token>, Vec<&'a str>) {
+    ) -> (
+        SpecNode<'a>,
+        Vec<&'a parser::Token>,
+        Vec<&'a str>,
+        Vec<&'a Subcommand>,
+    ) {
         let mut current = SpecNode::Root(spec);
         let mut remaining = Vec::new();
         let mut matched_subcommands = Vec::new();
+        let mut matched_defs = Vec::new();
 
         for token in tokens {
             if token.text.starts_with('-') {
@@ -314,20 +372,18 @@ impl CompletionEngine {
             {
                 current = SpecNode::Sub(subcommand);
                 matched_subcommands.push(token.text.as_str());
+                matched_defs.push(subcommand);
             } else {
                 remaining.push(token);
             }
         }
 
-        (current, remaining, matched_subcommands)
+        (current, remaining, matched_subcommands, matched_defs)
     }
 
-    fn complete_options(node: SpecNode<'_>) -> Vec<CompletionCandidate> {
+    fn complete_options(scope: &OptionScope<'_>) -> Vec<CompletionCandidate> {
         let mut candidates = Vec::new();
-        for opt in Self::get_options(node) {
-            if opt.hidden {
-                continue;
-            }
+        for opt in &scope.available {
             for name in opt.name.iter() {
                 candidates.push(Self::named_candidate(
                     name,
@@ -347,14 +403,19 @@ impl CompletionEngine {
         candidates
     }
 
-    fn option_takes_arg(node: SpecNode<'_>, option_name: &str) -> bool {
-        Self::get_options(node)
+    fn option_takes_arg(scope: &OptionScope<'_>, option_name: &str) -> bool {
+        scope
+            .all
             .iter()
             .any(|opt| opt.name.contains(option_name) && !opt.args.is_empty())
     }
 
-    fn complete_option_arg(node: SpecNode<'_>, option_name: &str) -> Vec<CompletionCandidate> {
-        for opt in Self::get_options(node) {
+    fn complete_option_arg(
+        _node: SpecNode<'_>,
+        scope: &OptionScope<'_>,
+        option_name: &str,
+    ) -> Vec<CompletionCandidate> {
+        for opt in &scope.all {
             if !opt.name.contains(option_name) {
                 continue;
             }
@@ -375,6 +436,7 @@ impl CompletionEngine {
 
     fn complete_positional(
         node: SpecNode<'_>,
+        scope: &OptionScope<'_>,
         positional_index: usize,
         include_options: bool,
     ) -> Vec<CompletionCandidate> {
@@ -414,10 +476,7 @@ impl CompletionEngine {
         }
 
         if include_options {
-            for opt in Self::get_options(node) {
-                if opt.hidden {
-                    continue;
-                }
+            for opt in &scope.available {
                 candidates.push(Self::named_candidate(
                     opt.name.preferred(),
                     CandidateMetadata {
@@ -436,8 +495,9 @@ impl CompletionEngine {
         candidates
     }
 
-    fn option_arg<'a>(node: SpecNode<'a>, option_name: &str) -> Option<&'a Arg> {
-        Self::get_options(node)
+    fn option_arg<'a>(scope: &OptionScope<'a>, option_name: &str) -> Option<&'a Arg> {
+        scope
+            .all
             .iter()
             .find(|opt| opt.name.contains(option_name))
             .and_then(|opt| opt.args.first())
@@ -469,6 +529,133 @@ impl CompletionEngine {
             completing_option_arg,
             cwd: cwd.to_string(),
         }
+    }
+
+    fn option_scope<'a>(
+        spec: &'a Spec,
+        subcommand_defs: &[&'a Subcommand],
+        tokens: &[&parser::Token],
+    ) -> OptionScope<'a> {
+        let all = Self::collect_available_options(spec, subcommand_defs);
+        let usage = Self::analyze_option_usage(&all, tokens);
+        let available = all
+            .iter()
+            .copied()
+            .filter(|opt| Self::option_is_available(opt, &usage))
+            .collect();
+        let mut used_options: Vec<String> = usage.used_preferred_names.into_iter().collect();
+        used_options.sort();
+
+        OptionScope {
+            all,
+            available,
+            used_options,
+        }
+    }
+
+    fn collect_available_options<'a>(
+        spec: &'a Spec,
+        subcommand_defs: &[&'a Subcommand],
+    ) -> Vec<&'a Opt> {
+        let mut options = Vec::new();
+        let mut seen_aliases = HashSet::new();
+
+        if let Some(current) = subcommand_defs.last() {
+            Self::push_options(&mut options, &mut seen_aliases, &current.options, false);
+
+            for subcommand in subcommand_defs[..subcommand_defs.len() - 1].iter().rev() {
+                Self::push_options(&mut options, &mut seen_aliases, &subcommand.options, true);
+            }
+
+            Self::push_options(&mut options, &mut seen_aliases, &spec.options, true);
+        } else {
+            Self::push_options(&mut options, &mut seen_aliases, &spec.options, false);
+        }
+
+        options
+    }
+
+    fn push_options<'a>(
+        target: &mut Vec<&'a Opt>,
+        seen_aliases: &mut HashSet<String>,
+        options: &'a [Opt],
+        persistent_only: bool,
+    ) {
+        for opt in options {
+            if persistent_only && !opt.is_persistent {
+                continue;
+            }
+
+            if opt.name.iter().any(|name| seen_aliases.contains(name)) {
+                continue;
+            }
+
+            for name in opt.name.iter() {
+                seen_aliases.insert(name.to_string());
+            }
+
+            target.push(opt);
+        }
+    }
+
+    fn analyze_option_usage<'a>(options: &[&'a Opt], tokens: &[&parser::Token]) -> OptionUsage<'a> {
+        let mut used_preferred_names = HashSet::new();
+        let mut used_aliases = HashSet::new();
+        let mut used_options = Vec::new();
+
+        for token in tokens {
+            if !token.text.starts_with('-') {
+                continue;
+            }
+
+            let Some(opt) = options
+                .iter()
+                .copied()
+                .find(|opt| opt.name.contains(&token.text))
+            else {
+                continue;
+            };
+
+            let preferred = opt.name.preferred().to_string();
+            if used_preferred_names.insert(preferred) {
+                used_options.push(opt);
+            }
+
+            for name in opt.name.iter() {
+                used_aliases.insert(name.to_string());
+            }
+        }
+
+        OptionUsage {
+            used_preferred_names,
+            used_aliases,
+            used_options,
+        }
+    }
+
+    fn option_is_available(opt: &Opt, usage: &OptionUsage<'_>) -> bool {
+        if opt.hidden {
+            return false;
+        }
+
+        if !opt.is_repeatable && usage.used_preferred_names.contains(opt.name.preferred()) {
+            return false;
+        }
+
+        if opt
+            .exclusives_on
+            .iter()
+            .any(|name| usage.used_aliases.contains(name))
+        {
+            return false;
+        }
+
+        !usage.used_options.iter().any(|used_opt| {
+            used_opt
+                .exclusives_on
+                .iter()
+                .any(|name| opt.name.contains(name))
+        })
     }
 
     fn make_generator_context<'a>(
@@ -539,14 +726,6 @@ impl CompletionEngine {
             SpecNode::Sub(subcommand) => &subcommand.subcommands,
         }
     }
-
-    fn get_options<'a>(node: SpecNode<'a>) -> &'a [Opt] {
-        match node {
-            SpecNode::Root(spec) => &spec.options,
-            SpecNode::Sub(subcommand) => &subcommand.options,
-        }
-    }
-
     fn get_args<'a>(node: SpecNode<'a>) -> ArgOrArgsIter<'a> {
         match node {
             SpecNode::Root(spec) => spec.args.iter(),
@@ -607,7 +786,15 @@ mod tests {
             ],
             "options": [
                 {"name": "--version", "description": "Print version"},
-                {"name": "--help", "description": "Show help"}
+                {"name": "--help", "description": "Show help", "isPersistent": true},
+                {"name": "--config", "description": "Config file", "isPersistent": true,
+                 "args": {"name": "config", "suggestions": ["dev.toml", "prod.toml"]}},
+                {"name": "--tag", "description": "Apply tag", "isPersistent": true, "isRepeatable": true},
+                {"name": "--json", "description": "JSON output", "isPersistent": true,
+                 "exclusivesOn": ["--yaml"]},
+                {"name": "--yaml", "description": "YAML output", "isPersistent": true,
+                 "exclusivesOn": ["--json"]},
+                {"name": "--root-only", "description": "Root-only option"}
             ]
         }"#;
         store.load_embedded(&[("git.json", git_spec)]);
@@ -644,6 +831,43 @@ mod tests {
         let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
         assert!(names.contains(&"-m"));
         assert!(names.contains(&"--message"));
+        assert!(names.contains(&"--help"));
+        assert!(names.contains(&"--config"));
+        assert!(!names.contains(&"--root-only"));
+    }
+
+    #[test]
+    fn test_complete_options_filters_used_non_repeatable_flags() {
+        let mut engine = CompletionEngine::new(test_store());
+        let candidates = engine.complete("git commit --help -", ".").candidates;
+        let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
+        assert!(!names.contains(&"--help"));
+        assert!(names.contains(&"--config"));
+    }
+
+    #[test]
+    fn test_complete_options_keeps_repeatable_flags_visible() {
+        let mut engine = CompletionEngine::new(test_store());
+        let candidates = engine.complete("git commit --tag -", ".").candidates;
+        let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"--tag"));
+    }
+
+    #[test]
+    fn test_complete_options_hides_mutually_exclusive_flags() {
+        let mut engine = CompletionEngine::new(test_store());
+        let candidates = engine.complete("git commit --json -", ".").candidates;
+        let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
+        assert!(!names.contains(&"--yaml"));
+    }
+
+    #[test]
+    fn test_complete_inherited_option_args() {
+        let mut engine = CompletionEngine::new(test_store());
+        let candidates = engine.complete("git commit --config ", ".").candidates;
+        let names: Vec<&str> = candidates.iter().map(|c| c.name.as_str()).collect();
+        assert!(names.contains(&"dev.toml"));
+        assert!(names.contains(&"prod.toml"));
     }
 
     #[test]

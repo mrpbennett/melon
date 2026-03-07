@@ -1,3 +1,5 @@
+use crate::input::parser::QuoteMode;
+
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct LineState {
     buffer: String,
@@ -178,20 +180,30 @@ impl LineState {
         append_space: bool,
     ) -> CompletionEdit {
         let start = self.byte_index_before_cursor(partial_chars);
-        let delete_left = self.buffer[start..self.cursor].chars().count();
         let token_end = if partial_chars == 0 {
             self.cursor
         } else {
             self.token_end_from_cursor()
         };
-        let delete_right = self.buffer[self.cursor..token_end].chars().count();
+        self.apply_completion_span(replacement, start, token_end, append_space)
+    }
+
+    pub fn apply_completion_span(
+        &mut self,
+        replacement: &CompletionText,
+        start: usize,
+        end: usize,
+        append_space: bool,
+    ) -> CompletionEdit {
+        let delete_left = self.buffer[start..self.cursor].chars().count();
+        let delete_right = self.buffer[self.cursor..end].chars().count();
 
         let mut insert_text = replacement.text.clone();
         if append_space {
             insert_text.push(' ');
         }
 
-        self.buffer.replace_range(start..token_end, &insert_text);
+        self.buffer.replace_range(start..end, &insert_text);
         let cursor = if append_space && replacement.cursor_at_end() {
             insert_text.len()
         } else {
@@ -215,19 +227,32 @@ impl LineState {
     }
 
     pub fn should_append_space(&self, insert_kind_is_folder: bool, partial_chars: usize) -> bool {
+        self.should_append_space_for_span(
+            insert_kind_is_folder,
+            if partial_chars == 0 {
+                self.cursor
+            } else {
+                self.token_end_from_cursor()
+            },
+            QuoteMode::None,
+        )
+    }
+
+    pub fn should_append_space_for_span(
+        &self,
+        insert_kind_is_folder: bool,
+        replacement_end: usize,
+        quote_mode: QuoteMode,
+    ) -> bool {
         if insert_kind_is_folder {
             return false;
         }
 
-        if self.cursor < self.buffer.len() {
+        if !matches!(quote_mode, QuoteMode::None) {
             return false;
         }
 
-        if partial_chars == 0 {
-            return true;
-        }
-
-        self.token_end_from_cursor() == self.cursor
+        self.cursor == replacement_end && replacement_end == self.buffer.len()
     }
 
     fn token_end_from_cursor(&self) -> usize {
@@ -282,6 +307,7 @@ fn is_completion_boundary(ch: char) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::input::parser::{completion_edit_context, QuoteMode};
 
     #[test]
     fn test_insert_mid_line() {
@@ -352,6 +378,32 @@ mod tests {
     }
 
     #[test]
+    fn test_apply_completion_span_replaces_raw_escaped_token() {
+        let mut line = LineState::default();
+        line.insert_text(r"echo hello\ world");
+        let context = completion_edit_context(line.buffer(), line.cursor());
+        let completion = CompletionText::from_insert_value(r"good\ bye");
+        let edit = line.apply_completion_span(
+            &completion,
+            context.replacement_start,
+            context.replacement_end,
+            false,
+        );
+
+        assert_eq!(
+            edit,
+            CompletionEdit {
+                delete_left: 12,
+                delete_right: 0,
+                insert_text: r"good\ bye".into(),
+                move_left: 0,
+                submits_line: false,
+            }
+        );
+        assert_eq!(line.buffer(), r"echo good\ bye");
+    }
+
+    #[test]
     fn test_kill_last_word_respects_cursor() {
         let mut line = LineState::default();
         line.insert_text("git commit --amend");
@@ -384,5 +436,17 @@ mod tests {
         line.insert_text("commit");
         line.move_home();
         assert!(!line.should_append_space(false, 0));
+    }
+
+    #[test]
+    fn test_should_not_append_space_inside_quotes() {
+        let mut line = LineState::default();
+        line.insert_text("echo \"hello");
+        let context = completion_edit_context(line.buffer(), line.cursor());
+        assert!(!line.should_append_space_for_span(
+            false,
+            context.replacement_end,
+            QuoteMode::Double
+        ));
     }
 }

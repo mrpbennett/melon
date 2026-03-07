@@ -80,6 +80,26 @@
 - `tools/convert_specs.ts` now preserves serializable `generators` and string `trigger` data instead of discarding those keys up front; unsupported function-valued hooks are still stripped.
 - Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
 
+## Option And Shell UX Pass
+- [x] Inherit persistent options from parent specs and filter option candidates based on already-used, repeatable, and mutually exclusive flags.
+- [x] Use the same option scope for option-arg completion so inherited persistent flags resolve correctly.
+- [x] Replace the raw token span around the cursor during accept instead of deleting the already-unescaped logical partial.
+- [x] Escape inserted candidate text according to the active shell quoting context when the candidate does not provide an explicit `insertValue`.
+- [x] Verify with focused unit tests plus `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Option And Shell UX Notes
+- Prefer a single option-scope implementation inside the completion engine so inheritance and filtering rules stay consistent across option listing and option-arg lookup.
+- Preserve explicit spec-provided `insertValue` strings exactly; only shell-escape fallback insertions derived from the candidate `name`.
+- Preserve surrounding open quotes during replacement when the user is completing inside a quoted token.
+
+### Option And Shell UX Review
+- The completion engine now builds an inherited option scope that keeps current-node options, adds persistent parent/root options, and filters hidden, already-used non-repeatable, and mutually exclusive flags before they reach the popup.
+- Option-arg lookup now uses that same scope, so persistent root options like `--config` continue to resolve suggestion/path/generator args under subcommands.
+- Popup acceptance now computes a raw replacement span around the cursor instead of deleting the already-unescaped logical partial, which fixes acceptance for escaped tokens like `hello\ world` and preserves surrounding open quotes.
+- Fallback insertions derived from `candidate.name` are now escaped for unquoted, single-quoted, and double-quoted shell contexts. Explicit spec-provided `insertValue` strings are still inserted verbatim.
+- Verification passed with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+- Manual interactive shell validation was not run in this pass.
+
 ## Phase 1: PTY Proxy Skeleton ✅
 - [x] `cargo init`, add dependencies (Cargo.toml)
 - [x] `pty/proxy.rs` — spawn $SHELL in PTY, raw mode, async stdin↔PTY proxy

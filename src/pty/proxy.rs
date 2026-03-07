@@ -10,8 +10,10 @@ use crate::completion::matcher::FuzzyMatcher;
 use crate::completion::spec::CandidateKind;
 use crate::config::Config;
 use crate::input::line::{CompletionEdit, CompletionText, LineState};
+use crate::input::parser::completion_edit_context;
 use crate::input::trigger::{classify_input, InputAction};
 use crate::shell::detect::detect_shell;
+use crate::shell::escape::escape_fallback_completion;
 use crate::ui::popup::PopupState;
 use crate::ui::render::PopupRenderer;
 use crate::ui::theme::Theme;
@@ -825,16 +827,28 @@ pub async fn run_proxy() -> Result<i32> {
                                 if let Some(candidate) =
                                     popup.selected_item().map(|item| item.candidate.clone())
                                 {
-                                    let completion =
-                                        CompletionText::from_insert_value(candidate.insert_text());
-                                    let append_space = line_state.should_append_space(
+                                    let edit_context =
+                                        completion_edit_context(line_state.buffer(), line_state.cursor());
+                                    let raw_insert = if candidate.insert_value.is_some() {
+                                        candidate.insert_text().to_string()
+                                    } else {
+                                        escape_fallback_completion(
+                                            &shell_type,
+                                            edit_context.quote_mode,
+                                            candidate.insert_text(),
+                                        )
+                                    };
+                                    let completion = CompletionText::from_insert_value(&raw_insert);
+                                    let append_space = line_state.should_append_space_for_span(
                                         matches!(candidate.kind, CandidateKind::Folder),
-                                        popup_partial_len,
+                                        edit_context.replacement_end,
+                                        edit_context.quote_mode,
                                     ) && completion.cursor_at_end()
                                         && !completion.submits_line;
-                                    let edit = line_state.apply_completion(
+                                    let edit = line_state.apply_completion_span(
                                         &completion,
-                                        popup_partial_len,
+                                        edit_context.replacement_start,
+                                        edit_context.replacement_end,
                                         append_space,
                                     );
                                     sync_cursor_from_line(

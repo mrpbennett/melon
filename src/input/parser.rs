@@ -1,5 +1,19 @@
 /// Command-line tokenizer that handles quotes, escapes, pipes, and operators.
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum QuoteMode {
+    None,
+    Single,
+    Double,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct CompletionEditContext {
+    pub replacement_start: usize,
+    pub replacement_end: usize,
+    pub quote_mode: QuoteMode,
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct Token {
     pub text: String,
@@ -194,6 +208,190 @@ pub fn split_partial(input: &str) -> (Vec<Token>, String) {
     (parsed.tokens, parsed.partial)
 }
 
+pub fn completion_edit_context(input: &str, cursor: usize) -> CompletionEditContext {
+    let scan = scan_to_cursor(input, cursor);
+    let replacement_start = if scan.preserve_open_quote() {
+        scan.quote_start
+            .map(|index| index + 1)
+            .unwrap_or(scan.token_start)
+    } else {
+        scan.token_start
+    };
+    let replacement_end = scan_forward_for_replacement_end(input, cursor, &scan);
+
+    CompletionEditContext {
+        replacement_start,
+        replacement_end,
+        quote_mode: scan.quote_mode,
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+struct CursorScan {
+    token_start: usize,
+    quote_mode: QuoteMode,
+    quote_start: Option<usize>,
+    quote_started_at_token_start: bool,
+}
+
+impl CursorScan {
+    fn preserve_open_quote(&self) -> bool {
+        !matches!(self.quote_mode, QuoteMode::None) && self.quote_started_at_token_start
+    }
+}
+
+fn scan_to_cursor(input: &str, cursor: usize) -> CursorScan {
+    let mut token_start = cursor;
+    let mut in_token = false;
+    let mut quote_mode = QuoteMode::None;
+    let mut quote_start = None;
+    let mut quote_started_at_token_start = false;
+    let mut escaped = false;
+
+    for (index, ch) in input.char_indices() {
+        if index >= cursor {
+            break;
+        }
+
+        match quote_mode {
+            QuoteMode::None => {
+                if escaped {
+                    escaped = false;
+                    continue;
+                }
+
+                if is_completion_boundary(ch) {
+                    in_token = false;
+                    token_start = index + ch.len_utf8();
+                    continue;
+                }
+
+                if !in_token {
+                    in_token = true;
+                    token_start = index;
+                }
+
+                match ch {
+                    '\\' => escaped = true,
+                    '\'' => {
+                        quote_mode = QuoteMode::Single;
+                        quote_start = Some(index);
+                        quote_started_at_token_start = index == token_start;
+                    }
+                    '"' => {
+                        quote_mode = QuoteMode::Double;
+                        quote_start = Some(index);
+                        quote_started_at_token_start = index == token_start;
+                    }
+                    _ => {}
+                }
+            }
+            QuoteMode::Single => {
+                if ch == '\'' {
+                    quote_mode = QuoteMode::None;
+                    quote_start = None;
+                }
+            }
+            QuoteMode::Double => {
+                if escaped {
+                    escaped = false;
+                    continue;
+                }
+
+                match ch {
+                    '\\' => escaped = true,
+                    '"' => {
+                        quote_mode = QuoteMode::None;
+                        quote_start = None;
+                    }
+                    _ => {}
+                }
+            }
+        }
+    }
+
+    if !in_token {
+        token_start = cursor;
+    }
+
+    CursorScan {
+        token_start,
+        quote_mode,
+        quote_start,
+        quote_started_at_token_start,
+    }
+}
+
+fn scan_forward_for_replacement_end(input: &str, cursor: usize, scan: &CursorScan) -> usize {
+    let mut quote_mode = scan.quote_mode;
+    let mut escaped = false;
+    let mut end = cursor;
+
+    for (offset, ch) in input[cursor..].char_indices() {
+        let index = cursor + offset;
+
+        match quote_mode {
+            QuoteMode::None => {
+                if escaped {
+                    escaped = false;
+                    end = index + ch.len_utf8();
+                    continue;
+                }
+
+                if is_completion_boundary(ch) {
+                    return index;
+                }
+
+                match ch {
+                    '\\' => escaped = true,
+                    '\'' => quote_mode = QuoteMode::Single,
+                    '"' => quote_mode = QuoteMode::Double,
+                    _ => {}
+                }
+                end = index + ch.len_utf8();
+            }
+            QuoteMode::Single => {
+                if ch == '\'' {
+                    if scan.preserve_open_quote() {
+                        return index;
+                    }
+                    quote_mode = QuoteMode::None;
+                }
+                end = index + ch.len_utf8();
+            }
+            QuoteMode::Double => {
+                if escaped {
+                    escaped = false;
+                    end = index + ch.len_utf8();
+                    continue;
+                }
+
+                match ch {
+                    '\\' => escaped = true,
+                    '"' => {
+                        if scan.preserve_open_quote() {
+                            return index;
+                        }
+                        quote_mode = QuoteMode::None;
+                    }
+                    _ => {}
+                }
+                end = index + ch.len_utf8();
+            }
+        }
+    }
+
+    if scan.preserve_open_quote() {
+        cursor
+    } else {
+        end
+    }
+}
+
+fn is_completion_boundary(ch: char) -> bool {
+    ch.is_whitespace() || matches!(ch, '|' | '&' | ';' | '>' | '<')
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -267,5 +465,48 @@ mod tests {
         let tokens = tokenize("echo hello > file.txt");
         assert_eq!(tokens.len(), 4);
         assert_eq!(tokens[2].kind, TokenKind::Redirect);
+    }
+
+    #[test]
+    fn test_completion_edit_context_replaces_full_escaped_token() {
+        let input = r"echo hello\ world";
+        let context = completion_edit_context(input, input.len());
+        assert_eq!(
+            context,
+            CompletionEditContext {
+                replacement_start: 5,
+                replacement_end: input.len(),
+                quote_mode: QuoteMode::None,
+            }
+        );
+    }
+
+    #[test]
+    fn test_completion_edit_context_preserves_opening_quote() {
+        let input = "echo \"hello world";
+        let context = completion_edit_context(input, input.len());
+        assert_eq!(
+            context,
+            CompletionEditContext {
+                replacement_start: 6,
+                replacement_end: input.len(),
+                quote_mode: QuoteMode::Double,
+            }
+        );
+    }
+
+    #[test]
+    fn test_completion_edit_context_preserves_closing_quote_after_cursor() {
+        let input = "echo \"hello\"";
+        let cursor = input.len() - 1;
+        let context = completion_edit_context(input, cursor);
+        assert_eq!(
+            context,
+            CompletionEditContext {
+                replacement_start: 6,
+                replacement_end: cursor,
+                quote_mode: QuoteMode::Double,
+            }
+        );
     }
 }
