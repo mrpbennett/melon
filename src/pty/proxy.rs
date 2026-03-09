@@ -58,6 +58,18 @@ struct PendingCompletionRequest {
     kind: CompletionRequestKind,
 }
 
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+struct TerminalState {
+    prompt_active: bool,
+    alternate_screen_active: bool,
+}
+
+enum OscEvent {
+    Cwd(String),
+    PromptStart,
+    PromptEnd,
+}
+
 const DELETE_KEY_SEQUENCE: &[u8] = b"\x1b[3~";
 const CURSOR_LEFT_SEQUENCE: &[u8] = b"\x1b[D";
 
@@ -160,6 +172,24 @@ fn parse_osc7_path(sequence: &[u8]) -> Option<String> {
     Some(percent_decode(raw_path))
 }
 
+fn parse_osc_event(sequence: &[u8]) -> Option<OscEvent> {
+    if let Some(path) = parse_osc7_path(sequence) {
+        return Some(OscEvent::Cwd(path));
+    }
+
+    let marker = if sequence.ends_with(b"\x1b\\") {
+        &sequence[..sequence.len().saturating_sub(2)]
+    } else {
+        &sequence[..sequence.len().saturating_sub(1)]
+    };
+
+    match marker {
+        b"]134;melon-prompt-start" => Some(OscEvent::PromptStart),
+        b"]134;melon-prompt-end" => Some(OscEvent::PromptEnd),
+        _ => None,
+    }
+}
+
 fn percent_decode(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut decoded = Vec::with_capacity(bytes.len());
@@ -227,12 +257,24 @@ fn parse_csi_param(params: &str, index: usize, default: u16) -> u16 {
 fn handle_csi_sequence(
     params: &str,
     final_byte: u8,
+    terminal_state: &mut TerminalState,
     term_rows: u16,
     term_cols: u16,
     last_cursor_row: &mut u16,
     last_cursor_col: &mut u16,
 ) {
     match final_byte {
+        b'h' | b'l' => {
+            let enabled = final_byte == b'h';
+            if params
+                .trim_start_matches('?')
+                .split(';')
+                .filter_map(|value| value.parse::<u16>().ok())
+                .any(|value| matches!(value, 47 | 1047 | 1049))
+            {
+                terminal_state.alternate_screen_active = enabled;
+            }
+        }
         b'A' => {
             *last_cursor_row = last_cursor_row.saturating_sub(parse_csi_param(params, 0, 1));
         }
@@ -271,6 +313,7 @@ fn track_pty_output(
     pending_bytes: &mut Vec<u8>,
     current_cwd: &mut String,
     osc_capture: &mut Option<Vec<u8>>,
+    terminal_state: &mut TerminalState,
     last_cursor_row: &mut u16,
     last_cursor_col: &mut u16,
 ) {
@@ -290,8 +333,12 @@ fn track_pty_output(
             let is_complete = data[index] == 0x07 || sequence.ends_with(b"\x1b\\");
             index += 1;
             if is_complete {
-                if let Some(path) = parse_osc7_path(sequence) {
-                    *current_cwd = path;
+                if let Some(event) = parse_osc_event(sequence) {
+                    match event {
+                        OscEvent::Cwd(path) => *current_cwd = path,
+                        OscEvent::PromptStart => terminal_state.prompt_active = true,
+                        OscEvent::PromptEnd => terminal_state.prompt_active = false,
+                    }
                 }
                 *osc_capture = None;
             }
@@ -347,6 +394,7 @@ fn track_pty_output(
                 handle_csi_sequence(
                     params,
                     data[seq_end],
+                    terminal_state,
                     term_rows,
                     term_cols,
                     last_cursor_row,
@@ -399,6 +447,12 @@ fn track_pty_output(
             }
         }
     }
+}
+
+fn should_trigger_completion(input: &str, terminal_state: &TerminalState) -> bool {
+    !input.trim().is_empty()
+        && terminal_state.prompt_active
+        && !terminal_state.alternate_screen_active
 }
 
 async fn flush_passthrough_buffer(pty_tx: &mpsc::Sender<Vec<u8>>, passthrough_buf: &mut Vec<u8>) {
@@ -696,6 +750,7 @@ pub async fn run_proxy() -> Result<i32> {
     // Actual column render() placed the popup at (may differ from popup_col when near right edge).
     let mut popup_col_actual: u16 = 0;
     let mut osc_capture: Option<Vec<u8>> = None;
+    let mut terminal_state = TerminalState::default();
     let mut pty_pending_bytes = Vec::new();
     let mut child_exited = false;
     let mut child_exit_code = 1;
@@ -739,7 +794,7 @@ pub async fn run_proxy() -> Result<i32> {
                     match mode {
                         Mode::Passthrough => match action {
                             InputAction::Tab => {
-                                if !line_state.before_cursor().trim().is_empty() {
+                                if should_trigger_completion(line_state.before_cursor(), &terminal_state) {
                                     if !queue_completion_request(
                                         &completion_tx,
                                         &mut pending_completion,
@@ -1209,14 +1264,37 @@ pub async fn run_proxy() -> Result<i32> {
 
             // PTY output: track cursor position, then forward to stdout
             Some(data) = pty_out_rx.recv() => {
+                let previous_terminal_state = terminal_state;
                 track_pty_output(
                     &data,
                     &mut pty_pending_bytes,
                     &mut current_cwd,
                     &mut osc_capture,
+                    &mut terminal_state,
                     &mut last_cursor_row,
                     &mut last_cursor_col,
                 );
+                if terminal_state.prompt_active != previous_terminal_state.prompt_active
+                    || (terminal_state.alternate_screen_active
+                        && !previous_terminal_state.alternate_screen_active)
+                {
+                    line_state.clear();
+                    popup_partial_len = 0;
+                }
+                if mode == Mode::PopupActive && !should_trigger_completion(line_state.before_cursor(), &terminal_state) {
+                    close_popup(PopupCloseState {
+                        renderer: &renderer,
+                        popup: &mut popup,
+                        stdout_tx: &stdout_tx,
+                        popup_row,
+                        popup_col_actual,
+                        popup_lines: &mut popup_lines,
+                        popup_partial_len: &mut popup_partial_len,
+                        mode: &mut mode,
+                    })
+                    .await;
+                    pending_completion = None;
+                }
                 let _ = stdout_tx.send(data).await;
             }
 
@@ -1289,6 +1367,7 @@ mod tests {
         let mut cwd = ".".to_string();
         let mut pending_bytes = Vec::new();
         let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
         let mut row = 0;
         let mut col = 0;
 
@@ -1297,6 +1376,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1307,6 +1387,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1317,6 +1398,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1328,6 +1410,7 @@ mod tests {
         let mut cwd = ".".to_string();
         let mut pending_bytes = Vec::new();
         let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
         let mut row = 0;
         let mut col = 5;
 
@@ -1336,6 +1419,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1347,6 +1431,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1359,6 +1444,7 @@ mod tests {
         let mut cwd = ".".to_string();
         let mut pending_bytes = Vec::new();
         let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
         let mut row = 0;
         let mut col = 0;
 
@@ -1367,6 +1453,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1378,6 +1465,7 @@ mod tests {
         let mut cwd = ".".to_string();
         let mut pending_bytes = Vec::new();
         let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
         let mut row = 0;
         let mut col = 0;
         let crab = "🦀".as_bytes();
@@ -1387,6 +1475,7 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
@@ -1398,11 +1487,91 @@ mod tests {
             &mut pending_bytes,
             &mut cwd,
             &mut osc_capture,
+            &mut terminal_state,
             &mut row,
             &mut col,
         );
         assert!(pending_bytes.is_empty());
         assert_eq!((row, col), (0, 2));
+    }
+
+    #[test]
+    fn test_track_pty_output_updates_prompt_state_from_melon_osc() {
+        let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
+        let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
+        let mut row = 0;
+        let mut col = 0;
+
+        track_pty_output(
+            b"\x1b]134;melon-prompt-start\x07",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut terminal_state,
+            &mut row,
+            &mut col,
+        );
+        assert!(terminal_state.prompt_active);
+
+        track_pty_output(
+            b"\x1b]134;melon-prompt-end\x07",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut terminal_state,
+            &mut row,
+            &mut col,
+        );
+        assert!(!terminal_state.prompt_active);
+    }
+
+    #[test]
+    fn test_track_pty_output_tracks_alternate_screen_state() {
+        let mut cwd = ".".to_string();
+        let mut pending_bytes = Vec::new();
+        let mut osc_capture = None;
+        let mut terminal_state = TerminalState::default();
+        let mut row = 0;
+        let mut col = 0;
+
+        track_pty_output(
+            b"\x1b[?1049h",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut terminal_state,
+            &mut row,
+            &mut col,
+        );
+        assert!(terminal_state.alternate_screen_active);
+
+        track_pty_output(
+            b"\x1b[?1049l",
+            &mut pending_bytes,
+            &mut cwd,
+            &mut osc_capture,
+            &mut terminal_state,
+            &mut row,
+            &mut col,
+        );
+        assert!(!terminal_state.alternate_screen_active);
+    }
+
+    #[test]
+    fn test_should_trigger_completion_requires_active_prompt() {
+        let mut terminal_state = TerminalState::default();
+
+        assert!(!should_trigger_completion("kubectl", &terminal_state));
+
+        terminal_state.prompt_active = true;
+        assert!(should_trigger_completion("kubectl", &terminal_state));
+
+        terminal_state.alternate_screen_active = true;
+        assert!(!should_trigger_completion("kubectl", &terminal_state));
+
+        assert!(!should_trigger_completion("   ", &terminal_state));
     }
 
     #[test]

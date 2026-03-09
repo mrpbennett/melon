@@ -214,3 +214,22 @@
 - Confirmed cwd tracking updated after `cd /tmp/melon-manual-sanity/alpha` via OSC 7, and file completion under `cat fi<Tab>` resolved `file-one.txt` from the new cwd.
 - Confirmed the wrapped shell exited with status `7` when sending `exit 7`, so `melon` no longer collapses non-zero exits to success.
 - Observed sandbox-related shell startup noise from `oh-my-zsh`, `atuin`, `zoxide`, and history locking under `/Users/paul`, but these warnings did not block the completion flow under test.
+
+## Prompt-Only Completion Bugfix
+- [x] Add focused regression tests for prompt-active state and alternate-screen suppression.
+- [x] Extend shell integration to emit prompt lifecycle markers alongside OSC 7 cwd updates.
+- [x] Track prompt-active and alternate-screen state from PTY output in the proxy.
+- [x] Gate popup opening and refresh so completions only run while the shell prompt is active.
+- [x] Verify with `cargo fmt --all`, `cargo test -q`, and `cargo clippy -q`.
+
+### Prompt-Only Notes
+- Prefer a minimal state-machine change in `src/pty/proxy.rs` over a second input pipeline.
+- Treat shell prompt lifecycle as the primary guard, with alternate-screen mode as a defensive fallback for TUIs like `nvim`.
+- Preserve existing Tab passthrough behavior when completions are suppressed or unavailable.
+
+### Prompt-Only Review
+- Shell integration now emits custom OSC prompt-start and prompt-end markers in addition to OSC 7 cwd updates, using `precmd`/`preexec` in zsh and `PROMPT_COMMAND`/`PS0` in bash.
+- The proxy now tracks prompt-active state from OSC markers and defensive alternate-screen state from CSI `?47`, `?1047`, and `?1049` mode switches.
+- Completion opening is now gated on a live shell prompt, and popup state is cleared if the terminal leaves prompt mode or enters a TUI alternate screen.
+- Added focused regressions for prompt marker parsing, alternate-screen tracking, and prompt-only completion gating.
+- Verification passed with `cargo fmt --all`, `cargo run -q -- --install`, `cargo test -q`, and `cargo clippy -q`.
